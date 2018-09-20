@@ -17,6 +17,8 @@ def read_data(path, w2i, embeddings):
     translator = str.maketrans('', '', string.punctuation)
     idx_data = []
     embedded_data = []
+    # Needed for padding later in model.
+    document_lengths = []
 
     for file_name in files:
         text_file = open(path + "/" + file_name, 'r')
@@ -26,14 +28,15 @@ def read_data(path, w2i, embeddings):
         tokenized_review = str(word_tokenize(review))
         # Remove punctuation from the review
         review = tokenized_review.translate(translator)
-
-        if len(tokenized_review) <= 500:
+        review_length = len(tokenized_review)
+        if review_length <= 500:
             splitted_review = review.split()
             indices = seq2idx(splitted_review, w2i)
             embedded_sentence = idx2embed(indices, embeddings)
             idx_data.append(indices)
             embedded_data.append(embedded_sentence)
-    return idx_data, embedded_data
+            document_lengths.append(review_length)
+    return idx_data, embedded_data, document_lengths
 
 def save_dataset(imdb_folder, w2i, embeddings, dataset_type, data_save_folder):
     """
@@ -44,18 +47,30 @@ def save_dataset(imdb_folder, w2i, embeddings, dataset_type, data_save_folder):
     Labels are also saved.
     """
     # Get the positive and negative datasets.
-    dataset_neg_idx, dataset_neg_embedded = read_data(imdb_folder + "/{}/neg".format(dataset_type), w2i, embeddings)
-    dataset_pos_idx, dataset_pos_embedded = read_data(imdb_folder + "/{}/pos".format(dataset_type), w2i, embeddings)
+    print("-- Retrieving datasets from folders")
+    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg = read_data(imdb_folder + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos = read_data(imdb_folder + "/{}/pos".format(dataset_type), w2i, embeddings)
     
     # Concatenate to get one big set.
+    print("-- Dataset id's")
     dataset_idx = dataset_neg_idx + dataset_pos_idx
-    dataset_embedded = dataset_neg_embedded + dataset_pos_embedded
-    dataset_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
-    
-    # Save the data.
     save_pickle(dataset_idx, "{}/{}_data_idx.pkl".format(data_save_folder, dataset_type))
+    del dataset_idx
+
+    print("-- Dataset embedded")
+    dataset_embedded = dataset_neg_embedded + dataset_pos_embedded
     save_pickle(dataset_embedded, "{}/{}_data_embedded.pkl".format(data_save_folder, dataset_type))
+    del dataset_embedded, dataset_neg_embedded, dataset_pos_embedded
+    
+    print("-- Labels")
+    dataset_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
     save_pickle(dataset_labels, "{}/{}_labels.pkl".format(data_save_folder, dataset_type))
+    del dataset_labels, dataset_neg_idx, dataset_pos_idx
+    
+    print("-- Lengths")
+    doc_lengths = doc_lengths_neg + doc_lengths_pos
+    save_pickle(doc_lengths, "{}/{}_doc_lengths.pkl".format(data_save_folder, dataset_type))
+    del doc_lengths, doc_lengths_neg, doc_lengths_pos
 
 def seq2idx(sequence, w2i):
     """
@@ -107,9 +122,11 @@ def save_data():
     data_folder = "../data"
     
     # Save per dataset (training/test)
-    save_dataset(imdb_folder, w2i, embeddings, "train", data_folder)    
+    print("Saving training data")
+    save_dataset(imdb_folder, w2i, embeddings, "train", data_folder)  
+    print("Saving test data")
     save_dataset(imdb_folder, w2i, embeddings, "test", data_folder)
-    
+    print("Finished")
 
 if __name__ == "__main__":
     save_data()
