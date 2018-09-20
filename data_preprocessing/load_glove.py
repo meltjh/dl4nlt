@@ -27,4 +27,4 @@ def load_glove_embeddings(path, word2idx, embedding_dim=50):
             if index:
                 vector = np.array(values[1:], dtype='float32')
                 embeddings[index] = vector
-        return torch.from_numpy(embeddings).float()
+        return embeddings

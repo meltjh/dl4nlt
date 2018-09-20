@@ -4,6 +4,7 @@ from os.path import isfile, join
 import pickle
 import string
 from load_glove import load_glove_embeddings
+import numpy as np
 
 def read_data(path, w2i, embeddings):
     """
@@ -91,10 +92,12 @@ def idx2embed(indices, embeddings):
     """
     Convert a sequence of word ids to a sequence of their Glove embeddings.
     """
-    embedded_sentence = []
-    for idx in indices:
+    sentence_length = len(indices)
+    embedded_sentence = np.zeros((sentence_length, embeddings.shape[1]))
+    for i in range(sentence_length):
+        idx = indices[i]
         word_embedding = embeddings[idx]
-        embedded_sentence.append(word_embedding)
+        embedded_sentence[i] = word_embedding
     return embedded_sentence
 
 def save_pickle(data, filename):
