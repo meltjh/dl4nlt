@@ -3,8 +3,9 @@ import torch
 import torch.optim as optim
 from torch import nn 
 from torch.autograd import Variable
-from data_processing import read_data 
+from data_preprocessing import read_data 
 import pickle 
+from data_preprocessing.load_glove import load_glove, load_glove_embeddings
 
 class CBOW(nn.Module):
 
@@ -22,30 +23,7 @@ class CBOW(nn.Module):
         logits = self.linear(bow)     
         return logits
 
-# Reading Glove based on https://github.com/A-Jacobson/CNN_Sentence_Classification/blob/master/WordVectors.ipynb 
 glove_path = 'glove/glove.6B.50d.txt'
-def load_glove(path):
-    with open(path) as f:
-        glove = {} 
-        for line in f.readlines():
-            values = line.split() 
-            word = values[0]
-            vector = np.array(values[1:], dtype='float32')
-            glove[word] = vector 
-        return glove 
-
-def load_glove_embeddings(path, word2idx, embedding_dim=50):
-    with open(path) as f:
-        embeddings = np.zeros((len(word2idx), embedding_dim))
-        for line in f.readlines():
-            values = line.split()
-            word = values[0]
-            index = word2idx.get(word)
-            if index:
-                vector = np.array(values[1:], dtype='float32')
-                embeddings[index] = vector
-        return torch.from_numpy(embeddings).float()
-
 glove = load_glove(glove_path)
 
 # # READ IN IMDB VOCABULARY 

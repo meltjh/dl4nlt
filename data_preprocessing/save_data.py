@@ -3,9 +3,9 @@ from os import listdir
 from os.path import isfile, join
 import pickle
 import string
+from load_glove import load_glove_embeddings
 
-
-def read_data(path, w2i):
+def read_data(path, w2i, embeddings):
     """
     Finds all reviews in a folder and converts them to lowercase, tokenizes
     them and removes punctuation. If the length of the review is longer than
@@ -15,7 +15,8 @@ def read_data(path, w2i):
 
     files = [f for f in listdir(path) if isfile(join(path, f))]
     translator = str.maketrans('', '', string.punctuation)
-    data = []
+    idx_data = []
+    embedded_data = []
 
     for file_name in files:
         text_file = open(path + "/" + file_name, 'r')
@@ -27,10 +28,34 @@ def read_data(path, w2i):
         review = tokenized_review.translate(translator)
 
         if len(tokenized_review) <= 500:
-            indices = seq2idx(review.split(), w2i)
-            data.append(indices)
-    return data
+            splitted_review = review.split()
+            indices = seq2idx(splitted_review, w2i)
+            embedded_sentence = idx2embed(indices, embeddings)
+            idx_data.append(indices)
+            embedded_data.append(embedded_sentence)
+    return idx_data, embedded_data
 
+def save_dataset(imdb_folder, w2i, embeddings, dataset_type, data_save_folder):
+    """
+    Read out the imdb data and get the word ids and the word embeddings. 
+    Save the data in two ways:
+        1. word ids: sentences = [[idx1, idx2, idx3], [idx4, idx5, idx6]]
+        2. word embeddings: sentences = [[word_embed1, word_embed2, word_embed3], [word_embed4, word_embed5, word_embed6]]
+    Labels are also saved.
+    """
+    # Get the positive and negative datasets.
+    dataset_neg_idx, dataset_neg_embedded = read_data(imdb_folder + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_idx, dataset_pos_embedded = read_data(imdb_folder + "/{}/pos".format(dataset_type), w2i, embeddings)
+    
+    # Concatenate to get one big set.
+    dataset_idx = dataset_neg_idx + dataset_pos_idx
+    dataset_embedded = dataset_neg_embedded + dataset_pos_embedded
+    dataset_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
+    
+    # Save the data.
+    save_pickle(dataset_idx, "{}/{}_data_idx.pkl".format(data_save_folder, dataset_type))
+    save_pickle(dataset_embedded, "{}/{}_data_embedded.pkl".format(data_save_folder, dataset_type))
+    save_pickle(dataset_labels, "{}/{}_labels.pkl".format(data_save_folder, dataset_type))
 
 def seq2idx(sequence, w2i):
     """
@@ -47,44 +72,48 @@ def seq2idx(sequence, w2i):
             indices.append(w2i["UNK"])
     return indices
 
+def idx2embed(indices, embeddings):
+    """
+    Convert a sequence of word ids to a sequence of their Glove embeddings.
+    """
+    embedded_sentence = []
+    for idx in indices:
+        word_embedding = embeddings[idx]
+        embedded_sentence.append(word_embedding)
+    return embedded_sentence
 
 def save_pickle(data, filename):
+    """
+    Save the data as a .pkl file.
+    """
     with open(filename, "wb") as f:
         pickle.dump(data, f)
     f.close()
-
+    
+def save_data():
+    """
+    Save the training and test data.
+    """
+    # Get word2id mapping
+    imdb_folder = "aclImdb"
+    vocab_file = open(imdb_folder + "/imdb.vocab", "r")
+    vocab = vocab_file.read().split("\n")
+    w2i = {word: idx for idx, word in enumerate(vocab)}
+    w2i["UNK"] = len(vocab)
+    
+    # Get the embeddings
+    glove_path = 'glove/glove.6B.50d.txt'
+    embeddings = load_glove_embeddings(glove_path, w2i)
+    data_folder = "../data"
+    
+    # Save per dataset (training/test)
+    save_dataset(imdb_folder, w2i, embeddings, "train", data_folder)    
+    save_dataset(imdb_folder, w2i, embeddings, "test", data_folder)
+    
 
 if __name__ == "__main__":
-    train_file = open("train_data.pkl", "rb")
-    train_data = pickle.load(train_file)
-
-    print(train_data)
-
-    # vocab_file = open("aclImdb/imdb.vocab", "r")
-    # vocab = vocab_file.read().split("\n")
-    # w2i = {word: idx for idx, word in enumerate(vocab)}
-    # w2i["UNK"] = len(vocab)
-    #
-    #
-    # train_neg = read_data("aclImdb/train/neg", w2i)
-    # train_pos = read_data("aclImdb/train/pos", w2i)
-    # train_data = train_neg + train_pos
-    #
-    # train_labels = [0]*len(train_neg) + [1]*len(train_pos)
-    #
-    # save_pickle(train_data, "train_data.pkl")
-    # save_pickle(train_labels, "train_labels.pkl")
-    #
-    # del train_neg
-    # del train_pos
-    # del train_labels
-    #
-    #
-    # test_neg = read_data("aclImdb/test/neg", w2i)
-    # test_pos = read_data("aclImdb/test/pos", w2i)
-    # test_data = test_neg + test_pos
-    #
-    # test_labels = [0]*len(test_neg) + [1]*len(test_pos)
-    #
-    # save_pickle(test_data, "test_data.pkl")
-    # save_pickle(test_labels, "test_labels.pkl")
+    save_data()
+#    train_file = open("../data/train_data.pkl", "rb")
+#    train_data = pickle.load(train_file)
+#
+#    print(train_data)

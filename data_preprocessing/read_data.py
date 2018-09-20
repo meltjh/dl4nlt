@@ -1,10 +1,11 @@
 from os import listdir
 from os.path import isfile, join
-#from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize
 from torch.utils.data import Dataset, DataLoader
 import torch 
 import numpy as np 
 import pickle
+from load_glove import load_glove_embeddings
 
 class ImdbDataset(Dataset):
     def __init__(self,x,y):
@@ -20,17 +21,17 @@ class ImdbDataset(Dataset):
         y = self.y[idx]
         return x,y
 
-#def read_data(path):
-#    files = [f for f in listdir(path) if isfile(join(path, f))]
-#    data = []
-#
-#    for file_name in files[:10]:
-#        text_file = open(path + "/" + file_name, 'r')
-#        review = text_file.read().lower()
-#        # str_token = ' '.join(word_tokenize(review))
-#        # data.append(str_token)
-#        data.append(word_tokenize(review))
-#    return data
+def read_data(path):
+    files = [f for f in listdir(path) if isfile(join(path, f))]
+    data = []
+
+    for file_name in files[:10]:
+        text_file = open(path + "/" + file_name, 'r')
+        review = text_file.read().lower()
+        # str_token = ' '.join(word_tokenize(review))
+        # data.append(str_token)
+        data.append(word_tokenize(review))
+    return data
 
 def collate(batch):
     batch_size = len(batch)
@@ -77,6 +78,7 @@ def cut_off(vector, cut_val):
 
     # print('target', y)
 
+
 def get_data():
     '''Gekopieerd van simple_cbow.'''
     train_file = open("../data/train_data.pkl", "rb")
@@ -88,22 +90,3 @@ def get_data():
     dataloader = DataLoader(imdb_dataset, batch_size=10, collate_fn=collate)
     
     return dataloader
-
-def get_embedded_data():
-    w2i_file = open("dl4nlt/data/w2i.pkl", "rb")
-    word2idx = pickle.load(w2i_file)
-    embedding_glove = load_glove_embeddings(glove_path, word2idx)
-    print(embedding_glove.shape)
-    train_file = open("../data/train_data.pkl", "rb")
-    train_labels = open("../data/train_labels.pkl", "rb")
-    x = pickle.load(train_file)
-    y = pickle.load(train_labels)
-    
-    imdb_dataset = ImdbDataset(x, y)
-    dataloader = DataLoader(imdb_dataset, batch_size=10, collate_fn=collate)
-    
-    return dataloader
-
-get_data()
-
-    
