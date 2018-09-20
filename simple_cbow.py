@@ -3,7 +3,7 @@ import torch
 import torch.optim as optim
 from torch import nn 
 from torch.autograd import Variable
-import read_data 
+from data_processing import read_data 
 import pickle 
 
 class CBOW(nn.Module):

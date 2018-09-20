@@ -4,6 +4,7 @@ from nltk.tokenize import word_tokenize
 from torch.utils.data import Dataset, DataLoader
 import torch 
 import numpy as np 
+import pickle
 
 class ImdbDataset(Dataset):
     def __init__(self,x,y):
@@ -77,3 +78,14 @@ def cut_off(vector, cut_val):
     # print('target', y)
 
 
+def get_data():
+    '''Gekopieerd van simple_cbow.'''
+    train_file = open("../data/train_data.pkl", "rb")
+    train_labels = open("../data/train_labels.pkl", "rb")
+    x = pickle.load(train_file)
+    y = pickle.load(train_labels)
+    
+    imdb_dataset = ImdbDataset(x, y)
+    dataloader = DataLoader(imdb_dataset, batch_size=10, collate_fn=collate)
+    
+    return dataloader
