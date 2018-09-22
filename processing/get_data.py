@@ -38,8 +38,8 @@ def cut_off(vector, cut_val):
 
 def get_datasets(dataset_type):
     """ Returns the stored train, validation and test set. """
-    train_file = open("{}/{}_data.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
-    train_labels = open("{}/{}_labels.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
+    train_file = open("{}/{}/data.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
+    train_labels = open("{}/{}/labels.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
     x = pickle.load(train_file)
     y = pickle.load(train_labels)
     
