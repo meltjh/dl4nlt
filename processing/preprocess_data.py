@@ -9,6 +9,7 @@ IMDB_PATH = "aclImdb"
 GLOVE_PATH = "glove/glove.6B.50d.txt"
 DATA_SAVE_PATH = "../data"
 MAX_REVIEW_LENGTH = 500
+PADDING_KEY = "PAD"
 
 def preprocess(path, w2i, embeddings):
     """
@@ -53,7 +54,7 @@ def seq2idx(sequence, w2i):
         if word in w2i:
             indices.append(w2i[word])
         else:
-            indices.append(w2i["UNK"])
+            indices.append(w2i[PADDING_KEY])
     return indices
 
 def idx2embed(indices, embeddings):
@@ -72,6 +73,7 @@ def save_all_datasets():
     """
     Save the training and test data.
     """
+    print("Loading imdb vocabulary")
     # Get word2id mapping
     vocab_file = open(IMDB_PATH + "/imdb.vocab", "r")
     vocab = vocab_file.read().split("\n")
@@ -81,27 +83,27 @@ def save_all_datasets():
     # Last id is for padding
     padding_id = len(vocab)
     w2i["PAD"] = padding_id
-    i2w[padding_id] = "PAD"
+    i2w[padding_id] = PADDING_KEY
     
     # Get the embeddings
-    embeddings = load_glove_embeddings(GLOVE_PATH, w2i)
+    embeddings = load_glove_embeddings(w2i)
     
     # Save per dataset (training/test)
     print("Saving training data")
-    save_single_dataset(IMDB_PATH, w2i, embeddings, "train")  
+    save_single_dataset(w2i, embeddings, "train")  
     print("Saving test data")
-    save_single_dataset(IMDB_PATH, w2i, embeddings, "test")
+    save_single_dataset(w2i, embeddings, "test")
     
     save_pickle(w2i, "{}/w2i.pkl".format(DATA_SAVE_PATH))
     save_pickle(i2w, "{}/i2w.pkl".format(DATA_SAVE_PATH))
     
     print("Finished")
     
-def load_glove_embeddings(path, word2idx, embedding_dim=50):
+def load_glove_embeddings(word2idx, embedding_dim=50):
     """
     Returns the Glove embeddings of the words that occur in the IMDB dataset.
     """
-    with open(path) as f:
+    with open(GLOVE_PATH) as f:
         embeddings = np.zeros((len(word2idx), embedding_dim))
         for line in f.readlines():
             values = line.split()
@@ -154,5 +156,6 @@ def save_pickle(data, filename):
         pickle.dump(data, f)
     f.close()
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     save_all_datasets()
+    

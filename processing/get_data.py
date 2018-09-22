@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np 
 import pickle
-from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_FOLDER
+from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_FOLDER, PADDING_KEY
 
 PAD_ID = None
 
@@ -45,7 +45,7 @@ def get_datasets(dataset_type):
     train_labels = open("{}/{}/labels.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
     w2i_file = open("{}/w2i.pkl".format(DATA_SAVE_FOLDER), "rb")
     w2i = pickle.load(w2i_file)
-    pad_id = w2i["PAD"]
+    pad_id = w2i[PADDING_KEY]
     x = pickle.load(train_file)
     y = pickle.load(train_labels)
     
