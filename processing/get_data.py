@@ -1,8 +1,9 @@
-from torch.utils.data import Dataset, DataLoader
 import torch 
+from torch.utils.data import Dataset, DataLoader
 import numpy as np 
 import pickle
-from preprocess_data import load_glove_embeddings
+from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_FOLDER
+
 
 class ImdbDataset(Dataset):
     def __init__(self,x,y):
@@ -19,10 +20,10 @@ class ImdbDataset(Dataset):
 
 def collate(batch):
     batch_size = len(batch)
-    x = torch.ones((batch_size, 500))
+    x = torch.ones((batch_size, MAX_REVIEW_LENGTH))
     y = torch.ones((batch_size))
     for i in range(batch_size):
-        batch_n = cut_off(batch[i][0], 500)
+        batch_n = cut_off(batch[i][0], MAX_REVIEW_LENGTH)
         x[i] = torch.from_numpy(np.array(batch_n))
         y[i] = torch.from_numpy(np.array(batch[i][1]))
     return x,y 
@@ -35,10 +36,10 @@ def cut_off(vector, cut_val):
         vector = vector + (padding_len * [89527])
     return vector
 
-def get_datasets():
+def get_datasets(dataset_type):
     """ Returns the stored train, validation and test set. """
-    train_file = open("../data/train_data.pkl", "rb")
-    train_labels = open("../data/train_labels.pkl", "rb")
+    train_file = open("{}/{}_data.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
+    train_labels = open("{}/{}_labels.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
     x = pickle.load(train_file)
     y = pickle.load(train_labels)
     
