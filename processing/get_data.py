@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np 
 import pickle
-from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_FOLDER, PADDING_KEY
+from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH, PADDING_KEY
 
 PAD_ID = None
 
@@ -41,9 +41,9 @@ def cut_off(vector, cut_val, pad_id):
 
 def get_datasets(dataset_type):
     """ Returns the stored train, validation and test set. """
-    train_file = open("{}/{}/data.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
-    train_labels = open("{}/{}/labels.pkl".format(DATA_SAVE_FOLDER, dataset_type), "rb")
-    w2i_file = open("{}/w2i.pkl".format(DATA_SAVE_FOLDER), "rb")
+    train_file = open("{}/{}/data.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
+    train_labels = open("{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
+    w2i_file = open("{}/w2i.pkl".format(DATA_SAVE_PATH), "rb")
     w2i = pickle.load(w2i_file)
     pad_id = w2i[PADDING_KEY]
     x = pickle.load(train_file)
