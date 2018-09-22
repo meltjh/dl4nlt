@@ -5,11 +5,16 @@ import pickle
 import string
 import numpy as np
 
+IMDB_PATH = "aclImdb"
+GLOVE_PATH = "glove/glove.6B.50d.txt"
+DATA_SAVE_PATH = "../data"
+MAX_REVIEW_LENGTH = 500
+
 def preprocess(path, w2i, embeddings):
     """
     Finds all reviews in a folder and converts them to lowercase, tokenizes
     them and removes punctuation. If the length of the review is longer than
-    500 words, don't use it. Returns a list of lists with indices of the words
+    MAX_REVIEW_LENGTH words, don't use it. Returns a list of lists with indices of the words
     that occur in the review.
     """
     files = [f for f in listdir(path) if isfile(join(path, f))]
@@ -28,7 +33,7 @@ def preprocess(path, w2i, embeddings):
         # Remove punctuation from the review
         review = tokenized_review.translate(translator)
         review_length = len(tokenized_review)
-        if review_length <= 500:
+        if review_length <= MAX_REVIEW_LENGTH:
             splitted_review = review.split()
             indices = seq2idx(splitted_review, w2i)
             embedded_sentence = idx2embed(indices, embeddings)
@@ -68,22 +73,28 @@ def save_all_datasets():
     Save the training and test data.
     """
     # Get word2id mapping
-    imdb_folder = "aclImdb"
-    vocab_file = open(imdb_folder + "/imdb.vocab", "r")
+    vocab_file = open(IMDB_PATH + "/imdb.vocab", "r")
     vocab = vocab_file.read().split("\n")
     w2i = {word: idx for idx, word in enumerate(vocab)}
-    w2i["UNK"] = len(vocab)
+    i2w = {idx: word for idx, word in enumerate(vocab)}
+
+    # Last id is for padding
+    padding_id = len(vocab)
+    w2i["PAD"] = padding_id
+    i2w[padding_id] = "PAD"
     
     # Get the embeddings
-    glove_path = 'glove/glove.6B.50d.txt'
-    embeddings = load_glove_embeddings(glove_path, w2i)
-    data_folder = "../data"
+    embeddings = load_glove_embeddings(GLOVE_PATH, w2i)
     
     # Save per dataset (training/test)
     print("Saving training data")
-    save_single_dataset(imdb_folder, w2i, embeddings, "train", data_folder)  
+    save_single_dataset(IMDB_PATH, w2i, embeddings, "train")  
     print("Saving test data")
-    save_single_dataset(imdb_folder, w2i, embeddings, "test", data_folder)
+    save_single_dataset(IMDB_PATH, w2i, embeddings, "test")
+    
+    save_pickle(w2i, "{}/w2i.pkl".format(DATA_SAVE_PATH))
+    save_pickle(i2w, "{}/i2w.pkl".format(DATA_SAVE_PATH))
+    
     print("Finished")
     
 def load_glove_embeddings(path, word2idx, embedding_dim=50):
@@ -101,7 +112,7 @@ def load_glove_embeddings(path, word2idx, embedding_dim=50):
                 embeddings[index] = vector
         return embeddings
 
-def save_single_dataset(imdb_folder, w2i, embeddings, dataset_type, data_save_folder):
+def save_single_dataset(w2i, embeddings, dataset_type):
     """
     Read out the imdb data and get the word ids and the word embeddings. 
     Save the data in two ways:
@@ -111,28 +122,28 @@ def save_single_dataset(imdb_folder, w2i, embeddings, dataset_type, data_save_fo
     """
     # Get the positive and negative datasets.
     print("-- Retrieving datasets from folders")
-    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg = preprocess(imdb_folder + "/{}/neg".format(dataset_type), w2i, embeddings)
-    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos = preprocess(imdb_folder + "/{}/pos".format(dataset_type), w2i, embeddings)
+    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
     # Concatenate to get one big set.
     print("-- Dataset id's")
     dataset_idx = dataset_neg_idx + dataset_pos_idx
-    save_pickle(dataset_idx, "{}/{}_data_idx.pkl".format(data_save_folder, dataset_type))
+    save_pickle(dataset_idx, "{}/{}/data_idx.pkl".format(DATA_SAVE_PATH, dataset_type))
     del dataset_idx
 
     print("-- Dataset embedded")
     dataset_embedded = dataset_neg_embedded + dataset_pos_embedded
-    save_pickle(dataset_embedded, "{}/{}_data_embedded.pkl".format(data_save_folder, dataset_type))
+    save_pickle(dataset_embedded, "{}/{}/data_embedded.pkl".format(DATA_SAVE_PATH, dataset_type))
     del dataset_embedded, dataset_neg_embedded, dataset_pos_embedded
     
     print("-- Labels")
     dataset_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
-    save_pickle(dataset_labels, "{}/{}_labels.pkl".format(data_save_folder, dataset_type))
+    save_pickle(dataset_labels, "{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type))
     del dataset_labels, dataset_neg_idx, dataset_pos_idx
     
     print("-- Lengths")
     doc_lengths = doc_lengths_neg + doc_lengths_pos
-    save_pickle(doc_lengths, "{}/{}_doc_lengths.pkl".format(data_save_folder, dataset_type))
+    save_pickle(doc_lengths, "{}/{}/doc_lengths.pkl".format(DATA_SAVE_PATH, dataset_type))
     del doc_lengths, doc_lengths_neg, doc_lengths_pos
     
 def save_pickle(data, filename):
