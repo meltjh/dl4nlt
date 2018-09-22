@@ -154,5 +154,5 @@ def save_pickle(data, filename):
         pickle.dump(data, f)
     f.close()
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     save_all_datasets()
