@@ -24,13 +24,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
 LEARNING_RATE = 1e-4
-BATCH_SIZE = 32
+BATCH_SIZE = 5
 EPOCHS = 2
 
 
 
 def train():
-  dataloader = get_datasets('train')
+  dataloader_train, dataloader_validation, dataloader_test= get_datasets(BATCH_SIZE)
 
   # Initialize the model, optimizer and loss function
   convnet = ConvNet(1, 2).to(device)
@@ -39,15 +39,10 @@ def train():
 
   for i in range(EPOCHS):
       
-      for idx, data in enumerate(dataloader):
+      for idx, data in enumerate(dataloader_train):
       
-          x, y = data
-          
-          print(x.shape)
-          print(y.shape)
-          break
-          
-          
+          x, y, doc_ids, doc_lengths = data
+
           x = torch.tensor(x).to(device)
           y = torch.tensor(y).to(device)
           
