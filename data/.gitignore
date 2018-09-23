@@ -1,0 +1,9 @@
+# OS generated files #
+######################
+.DS_Store
+__pycache__
+
+# Data #
+########
+w2i.pkl
+i2w.pkl
