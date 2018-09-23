@@ -4,12 +4,15 @@ from os.path import isfile, join
 import pickle
 import string
 import numpy as np
+import random
+from collections import Counter
 
 IMDB_PATH = "aclImdb"
 GLOVE_PATH = "glove/glove.6B.50d.txt"
 DATA_SAVE_PATH = "../data"
 MAX_REVIEW_LENGTH = 500
 PADDING_KEY = "PAD"
+TRAINING_PERCENTAGE = 0.8
 
 def preprocess(path, w2i, embeddings):
     """
@@ -24,6 +27,10 @@ def preprocess(path, w2i, embeddings):
     embedded_data = []
     # Needed for padding later in model
     document_lengths = []
+    reviews = []
+    
+    REV_LENGTH = []
+    j = 0
 
     for file_name in files:
         text_file = open(path + "/" + file_name, 'r')
@@ -34,14 +41,26 @@ def preprocess(path, w2i, embeddings):
         # Remove punctuation from the review
         review = tokenized_review.translate(translator)
         review_length = len(tokenized_review)
+        
+        REV_LENGTH.append(review_length)
+        
         if review_length <= MAX_REVIEW_LENGTH:
+            j += 1
             splitted_review = review.split()
+            reviews.append(splitted_review)
             indices = seq2idx(splitted_review, w2i)
             embedded_sentence = idx2embed(indices, embeddings)
             idx_data.append(indices)
             embedded_data.append(embedded_sentence)
             document_lengths.append(review_length)
-    return idx_data, embedded_data, document_lengths
+    
+    counter = Counter(REV_LENGTH)
+    print("keys", len(counter))
+    z = [k for k, i in counter.items() if k <= 500]
+    print("KLEINER DAN", sum(z))
+    print("~~~~~~~~~", j)
+    
+    return idx_data, embedded_data, document_lengths, reviews
 
 def seq2idx(sequence, w2i):
     """
@@ -90,9 +109,9 @@ def save_all_datasets():
     
     # Save per dataset (training/test)
     print("Saving training data")
-    save_single_dataset(w2i, embeddings, "train")  
+    save_dataset(w2i, embeddings, "train")  
     print("Saving test data")
-    save_single_dataset(w2i, embeddings, "test")
+    save_dataset(w2i, embeddings, "test")
     
     save_pickle(w2i, "{}/w2i.pkl".format(DATA_SAVE_PATH))
     save_pickle(i2w, "{}/i2w.pkl".format(DATA_SAVE_PATH))
@@ -114,7 +133,7 @@ def load_glove_embeddings(word2idx, embedding_dim=50):
                 embeddings[index] = vector
         return embeddings
 
-def save_single_dataset(w2i, embeddings, dataset_type):
+def save_dataset(w2i, embeddings, dataset_type):
     """
     Read out the imdb data and get the word ids and the word embeddings. 
     Save the data in two ways:
@@ -124,30 +143,86 @@ def save_single_dataset(w2i, embeddings, dataset_type):
     """
     # Get the positive and negative datasets.
     print("-- Retrieving datasets from folders")
-    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
-    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
+    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
+    if dataset_type == "train":
+        splitted_dataset_neg = split_dataset(dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg)
+        splitted_dataset_pos = split_dataset(dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos)
+        
+        training_word_idx = splitted_dataset_neg[0] + splitted_dataset_pos[0]
+        training_word_embedded = splitted_dataset_neg[1] + splitted_dataset_pos[1]
+        training_labels = [0]*len(splitted_dataset_neg[0]) + [1]*len(splitted_dataset_pos[0])
+        training_doc_lengths = splitted_dataset_neg[2] + splitted_dataset_pos[2]
+        training_reviews = splitted_dataset_neg[3] + splitted_dataset_pos[3]
+        
+        save_single_dataset("train", training_word_idx, training_word_embedded, training_labels, training_doc_lengths, training_reviews)
+        
+        validation_word_idx = splitted_dataset_neg[4] + splitted_dataset_pos[4]
+        validation_word_embedded = splitted_dataset_neg[5] + splitted_dataset_pos[5]
+        training_labels = [0]*len(splitted_dataset_neg[4]) + [1]*len(splitted_dataset_pos[4])
+        validation_doc_lengths = splitted_dataset_neg[6] + splitted_dataset_pos[6]
+        validation_reviews = splitted_dataset_neg[7] + splitted_dataset_pos[7]
+        
+        save_single_dataset("validation", validation_word_idx, validation_word_embedded, training_labels, validation_doc_lengths, validation_reviews)
+
+    else:
+        test_word_idx = dataset_neg_idx + dataset_pos_idx
+        test_word_embedded = dataset_neg_embedded + dataset_pos_embedded
+        test_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
+        test_doc_lengths = doc_lengths_neg + doc_lengths_pos
+        test_reviews = reviews_neg + reviews_pos
+
+        save_single_dataset("test", test_word_idx, test_word_embedded, test_labels, test_doc_lengths, test_reviews)
+        
+def split_dataset(word_idx, word_embedded, doc_lengths, reviews):
+    num_samples = len(word_idx)
+    
+    zipped = list(zip(word_idx, word_embedded, doc_lengths, reviews))
+    random.shuffle(zipped)
+    word_idx, word_embedded, doc_lengths, reviews = (zip(*zipped))
+  
+    training_size = round(num_samples*TRAINING_PERCENTAGE)
+    
+    training_word_idx = word_idx[:training_size]
+    training_word_embedded = word_embedded[:training_size]
+    training_doc_lengths = doc_lengths[:training_size]
+    training_shuffled_reviews = reviews[:training_size]
+    
+    validation_word_idx = word_idx[training_size:]
+    validation_word_embedded = word_embedded[training_size:]
+    validation_doc_lengths = doc_lengths[training_size:]
+    validation_shuffled_reviews = reviews[training_size:]
+    
+    print("Training size", len(training_word_idx))
+    print("Validation size", len(validation_word_idx))
+    print("Total size", len(word_idx))
+    
+    return (training_word_idx, training_word_embedded, training_doc_lengths, training_shuffled_reviews,
+            validation_word_idx, validation_word_embedded, validation_doc_lengths, validation_shuffled_reviews)
+    
+def save_single_dataset(dataset_type, idx, embedded, labels, doc_lengths, reviews):
     # Concatenate to get one big set.
-    print("-- Dataset id's")
-    dataset_idx = dataset_neg_idx + dataset_pos_idx
-    save_pickle(dataset_idx, "{}/{}/data_idx.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del dataset_idx
+    print("-- Dataset ids")
+    save_pickle(idx, "{}/{}/data_idx.pkl".format(DATA_SAVE_PATH, dataset_type))
+    del idx
 
     print("-- Dataset embedded")
-    dataset_embedded = dataset_neg_embedded + dataset_pos_embedded
-    save_pickle(dataset_embedded, "{}/{}/data_embedded.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del dataset_embedded, dataset_neg_embedded, dataset_pos_embedded
+    save_pickle(embedded, "{}/{}/data_embedded.pkl".format(DATA_SAVE_PATH, dataset_type))
+    del embedded
     
     print("-- Labels")
-    dataset_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
-    save_pickle(dataset_labels, "{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del dataset_labels, dataset_neg_idx, dataset_pos_idx
+    save_pickle(labels, "{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type))
+    del labels
     
     print("-- Lengths")
-    doc_lengths = doc_lengths_neg + doc_lengths_pos
     save_pickle(doc_lengths, "{}/{}/doc_lengths.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del doc_lengths, doc_lengths_neg, doc_lengths_pos
+    del doc_lengths
     
+    print("-- Lengths")
+    save_pickle(reviews, "{}/{}/reviews.pkl".format(DATA_SAVE_PATH, dataset_type))
+    del reviews
+
 def save_pickle(data, filename):
     """
     Save the data as a .pkl file.
