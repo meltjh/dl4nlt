@@ -200,14 +200,19 @@ def save_dataset(w2i, embeddings, dataset_type):
         validation_doc_lengths = splitted_dataset_neg[4] + splitted_dataset_pos[4]
         validation_doc_ids = splitted_dataset_neg[5] + splitted_dataset_pos[5]
         save_single_dataset("validation", validation_word_embedded, validation_labels, validation_doc_lengths, validation_doc_ids)
+        
+        print("Training size", len(training_word_embedded))
+        print("Validation size", len(validation_word_embedded))
+        print("Total size", len(training_word_embedded) + len(validation_word_embedded))
 
     else:
         test_word_embedded = dataset_neg_embedded + dataset_pos_embedded
         test_labels = [0]*len(dataset_neg_embedded) + [1]*len(dataset_neg_embedded)
         test_doc_lengths = doc_lengths_neg + doc_lengths_pos
         test_doc_ids = doc_ids_neg + doc_ids_pos
-
         save_single_dataset("test", test_word_embedded, test_labels, test_doc_lengths, test_doc_ids)
+        
+        print("Test size", len(test_word_embedded))
 
 def create_equal_datasets(dataset_neg, dataset_pos):
     num_neg = len(dataset_neg[0])
@@ -240,10 +245,6 @@ def split_dataset(word_embedded, doc_lengths, doc_ids):
     validation_word_embedded = shuffled_word_embedded[training_size:]
     validation_doc_lengths = shuffled_doc_lengths[training_size:]
     validation_doc_ids = shuffled_doc_ids[training_size:]
-    
-    print("Training size", len(training_word_embedded))
-    print("Validation size", len(validation_word_embedded))
-    print("Total size", len(doc_lengths))
     
     return (training_word_embedded, training_doc_lengths, training_doc_ids, 
             validation_word_embedded, validation_doc_lengths, validation_doc_ids)
