@@ -1,0 +1,11 @@
+# OS generated files #
+######################
+.DS_Store
+__pycache__
+
+# Data #
+########
+data_embedded.pkl
+doc_ids.pkl
+doc_lengths.pkl
+labels.pkl

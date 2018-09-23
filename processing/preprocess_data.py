@@ -179,23 +179,26 @@ def save_dataset(w2i, embeddings, dataset_type):
     dataset_pos_embedded, doc_lengths_pos, doc_ids_pos, freq_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
     # Plot the frequencies
-    plot_frequencies(dataset_type, freq_neg, freq_pos)
+#    plot_frequencies(dataset_type, freq_neg, freq_pos)
     
-    if dataset_type == "train":        
-        splitted_dataset_neg = split_dataset(dataset_neg_embedded, doc_lengths_neg, doc_ids_neg)
-        splitted_dataset_pos = split_dataset(dataset_pos_embedded, doc_lengths_pos, doc_ids_pos)
-        
-        splitted_dataset_neg, splitted_dataset_pos = create_equal_datasets(splitted_dataset_neg, splitted_dataset_pos)
+    if dataset_type == "train":
+        dataset_neg = (dataset_neg_embedded, doc_lengths_neg, doc_ids_neg)
+        dataset_pos = (dataset_pos_embedded, doc_lengths_pos, doc_ids_pos)
+        dataset_neg, dataset_pos = create_equal_datasets(dataset_neg, dataset_pos)
+
+        splitted_dataset_neg = split_dataset(dataset_neg[0], dataset_neg[1], dataset_neg[2])
+        splitted_dataset_pos = split_dataset(dataset_pos[0], dataset_pos[1], dataset_pos[2])
+                
         training_word_embedded = splitted_dataset_neg[0] + splitted_dataset_pos[0]
         training_labels = [0]*len(splitted_dataset_neg[0]) + [1]*len(splitted_dataset_pos[0])
         training_doc_lengths = splitted_dataset_neg[1] + splitted_dataset_pos[1]
         training_doc_ids = splitted_dataset_neg[2] + splitted_dataset_pos[2]
         save_single_dataset("train", training_word_embedded, training_labels, training_doc_lengths, training_doc_ids)
         
-        validation_word_embedded = splitted_dataset_neg[4] + splitted_dataset_pos[4]
-        validation_labels = [0]*len(splitted_dataset_neg[4]) + [1]*len(splitted_dataset_pos[4])
-        validation_doc_lengths = splitted_dataset_neg[5] + splitted_dataset_pos[5]
-        validation_doc_ids = splitted_dataset_neg[6] + splitted_dataset_pos[6]
+        validation_word_embedded = splitted_dataset_neg[3] + splitted_dataset_pos[3]
+        validation_labels = [0]*len(splitted_dataset_neg[3]) + [1]*len(splitted_dataset_pos[3])
+        validation_doc_lengths = splitted_dataset_neg[4] + splitted_dataset_pos[4]
+        validation_doc_ids = splitted_dataset_neg[5] + splitted_dataset_pos[5]
         save_single_dataset("validation", validation_word_embedded, validation_labels, validation_doc_lengths, validation_doc_ids)
 
     else:
@@ -217,10 +220,9 @@ def create_equal_datasets(dataset_neg, dataset_pos):
         
 def cutoff_dataset(dataset, max_samples):
     word_embedded = dataset[0][:max_samples]
-    labels = dataset[1][:max_samples]
-    doc_lengths = dataset[2][:max_samples]
-    doc_ids = dataset[3][:max_samples]
-    return [word_embedded, labels, doc_lengths, doc_ids]
+    doc_lengths = dataset[1][:max_samples]
+    doc_ids = dataset[2][:max_samples]
+    return (word_embedded, doc_lengths, doc_ids)
     
 def split_dataset(word_embedded, doc_lengths, doc_ids):
     num_samples = len(doc_lengths)
