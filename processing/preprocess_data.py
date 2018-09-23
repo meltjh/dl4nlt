@@ -24,14 +24,12 @@ def preprocess(path, w2i, embeddings):
     """
     files = [f for f in listdir(path) if isfile(join(path, f))]
     translator = str.maketrans('', '', string.punctuation)
-    idx_data = []
     embedded_data = []
     # Needed for padding later in model
     document_lengths = []
-    reviews = []
+    review_id = []
     
-    REV_LENGTH = []
-    j = 0
+    all_document_lengths = []
 
     for file_name in files:
         text_file = open(path + "/" + file_name, 'r')
@@ -44,18 +42,16 @@ def preprocess(path, w2i, embeddings):
         splitted_review = stripped_review.split()
         review_length = len(splitted_review)
         
-        REV_LENGTH.append(review_length)
+        all_document_lengths.append(review_length)
         
         if review_length <= MAX_REVIEW_LENGTH:
-            j += 1
-            reviews.append(splitted_review)
+            review_id.append(file_name)
             indices = seq2idx(splitted_review, w2i)
             embedded_sentence = idx2embed(indices, embeddings)
-            idx_data.append(indices)
             embedded_data.append(embedded_sentence)
             document_lengths.append(review_length)
     
-    return idx_data, embedded_data, document_lengths, reviews, REV_LENGTH
+    return embedded_data, document_lengths, review_id, all_document_lengths
 
 def seq2idx(sequence, w2i):
     """
@@ -128,108 +124,141 @@ def load_glove_embeddings(word2idx, embedding_dim=50):
                 embeddings[index] = vector
         return embeddings
 
+def plot_frequencies(dataset_type, freq_neg, freq_pos):
+    # Make a combined frequencies list
+    freq_combined = []
+    freq_combined.extend(freq_neg)
+    freq_combined.extend(freq_pos)
+    
+    # Sort the counter of the frequencies in order to make the labels be the indices of the x axis
+    sorted_x = sorted(Counter(freq_combined).items(), key=lambda pair: pair[0], reverse=False)
+    labels, values = zip(*sorted_x)
+    indexes = labels
+    
+    fig, ax1 = plt.subplots()
+    
+    # Plot histogram
+    ax1.set_xlabel('Amount of words')
+    ax1.set_ylabel('Amount of documents (bars)')
+    ax1.bar(indexes, values, alpha=0.3)
+    
+    # Plot the lines
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Amount of documents in dataset given the word limit (lines)')
+    ax2.grid(True)
+    ax2.set_ylim(0, sum(values)*1.05) # The limit have to get set in order to make the y=0 be equal for both axis. The * >1 is for y top margin
+    for freqs, label in [(freq_neg, "Negatives"), (freq_pos, "Positive"), (freq_combined, "Combined")]:
+        # Sort the counter of the frequencies in order to make the labels be the indices of the x axis
+        sorted_x = sorted(Counter(freqs).items(), key=lambda pair: pair[0], reverse=False)
+        labels, values = zip(*sorted_x)
+        indexes = labels
+        
+        # For each index sum the previous values
+        y_total = []
+        tot_val = 0
+        for value in values:
+            tot_val += value
+            y_total.append(tot_val)
+            
+        ax2.plot(indexes, y_total, label=label, alpha=0.6)
+        
+    fig.legend(loc=4, bbox_to_anchor=(0.88, 0.1))
+    ax1.set_title("{} dataset".format(dataset_type.capitalize()))
+    plt.tight_layout()
+    plt.show()
+
 def save_dataset(w2i, embeddings, dataset_type):
     """
     Read out the imdb data and get the word ids and the word embeddings. 
-    Save the data in two ways:
-        1. word ids: sentences = [[idx1, idx2, idx3], [idx4, idx5, idx6]]
-        2. word embeddings: sentences = [[word_embed1, word_embed2, word_embed3], [word_embed4, word_embed5, word_embed6]]
+    Word embeddings: sentences = [[word_embed1, word_embed2, word_embed3], [word_embed4, word_embed5, word_embed6]]
     Labels are also saved.
     """
     # Get the positive and negative datasets.
     print("-- Retrieving datasets from folders")
-    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg, freq_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
-    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos, freq_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
+    dataset_neg_embedded, doc_lengths_neg, doc_ids_neg, freq_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_embedded, doc_lengths_pos, doc_ids_pos, freq_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
-    if dataset_type == "train":
-        freq_neg.extend(freq_pos)
-            
-        counter = Counter(freq_neg)
+    # Plot the frequencies
+    plot_frequencies(dataset_type, freq_neg, freq_pos)
+    
+    if dataset_type == "train":        
+        splitted_dataset_neg = split_dataset(dataset_neg_embedded, doc_lengths_neg, doc_ids_neg)
+        splitted_dataset_pos = split_dataset(dataset_pos_embedded, doc_lengths_pos, doc_ids_pos)
         
-        labels, values = zip(*counter.items())
-        indexes = np.arange(len(labels))
-        width = 1
-        plt.bar(indexes, values, width)
-        plt.show()
-        
-        ekwjdhewkjdhw
-        
-        
-        splitted_dataset_neg = split_dataset(dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg)
-        splitted_dataset_pos = split_dataset(dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos)
-        
-        training_word_idx = splitted_dataset_neg[0] + splitted_dataset_pos[0]
-        training_word_embedded = splitted_dataset_neg[1] + splitted_dataset_pos[1]
+        splitted_dataset_neg, splitted_dataset_pos = create_equal_datasets(splitted_dataset_neg, splitted_dataset_pos)
+        training_word_embedded = splitted_dataset_neg[0] + splitted_dataset_pos[0]
         training_labels = [0]*len(splitted_dataset_neg[0]) + [1]*len(splitted_dataset_pos[0])
-        training_doc_lengths = splitted_dataset_neg[2] + splitted_dataset_pos[2]
-        training_reviews = splitted_dataset_neg[3] + splitted_dataset_pos[3]
+        training_doc_lengths = splitted_dataset_neg[1] + splitted_dataset_pos[1]
+        training_doc_ids = splitted_dataset_neg[2] + splitted_dataset_pos[2]
+        save_single_dataset("train", training_word_embedded, training_labels, training_doc_lengths, training_doc_ids)
         
-        save_single_dataset("train", training_word_idx, training_word_embedded, training_labels, training_doc_lengths, training_reviews)
-        
-        validation_word_idx = splitted_dataset_neg[4] + splitted_dataset_pos[4]
-        validation_word_embedded = splitted_dataset_neg[5] + splitted_dataset_pos[5]
-        training_labels = [0]*len(splitted_dataset_neg[4]) + [1]*len(splitted_dataset_pos[4])
-        validation_doc_lengths = splitted_dataset_neg[6] + splitted_dataset_pos[6]
-        validation_reviews = splitted_dataset_neg[7] + splitted_dataset_pos[7]
-        
-        save_single_dataset("validation", validation_word_idx, validation_word_embedded, training_labels, validation_doc_lengths, validation_reviews)
+        validation_word_embedded = splitted_dataset_neg[4] + splitted_dataset_pos[4]
+        validation_labels = [0]*len(splitted_dataset_neg[4]) + [1]*len(splitted_dataset_pos[4])
+        validation_doc_lengths = splitted_dataset_neg[5] + splitted_dataset_pos[5]
+        validation_doc_ids = splitted_dataset_neg[6] + splitted_dataset_pos[6]
+        save_single_dataset("validation", validation_word_embedded, validation_labels, validation_doc_lengths, validation_doc_ids)
 
     else:
-        test_word_idx = dataset_neg_idx + dataset_pos_idx
         test_word_embedded = dataset_neg_embedded + dataset_pos_embedded
-        test_labels = [0]*len(dataset_neg_idx) + [1]*len(dataset_pos_idx)
+        test_labels = [0]*len(dataset_neg_embedded) + [1]*len(dataset_neg_embedded)
         test_doc_lengths = doc_lengths_neg + doc_lengths_pos
-        test_reviews = reviews_neg + reviews_pos
+        test_doc_ids = doc_ids_neg + doc_ids_pos
 
-        save_single_dataset("test", test_word_idx, test_word_embedded, test_labels, test_doc_lengths, test_reviews)
+        save_single_dataset("test", test_word_embedded, test_labels, test_doc_lengths, test_doc_ids)
+
+def create_equal_datasets(dataset_neg, dataset_pos):
+    num_neg = len(dataset_neg[0])
+    num_pos = len(dataset_pos[0])
+    if num_neg < num_pos:
+        dataset_pos = cutoff_dataset(dataset_pos, num_neg)
+    else:
+        dataset_neg = cutoff_dataset(dataset_neg, num_pos)
+    return dataset_neg, dataset_pos
         
-def split_dataset(word_idx, word_embedded, doc_lengths, reviews):
-    num_samples = len(word_idx)
+def cutoff_dataset(dataset, max_samples):
+    word_embedded = dataset[0][:max_samples]
+    labels = dataset[1][:max_samples]
+    doc_lengths = dataset[2][:max_samples]
+    doc_ids = dataset[3][:max_samples]
+    return [word_embedded, labels, doc_lengths, doc_ids]
     
-    zipped = list(zip(word_idx, word_embedded, doc_lengths, reviews))
+def split_dataset(word_embedded, doc_lengths, doc_ids):
+    num_samples = len(doc_lengths)
+    
+    zipped = list(zip(word_embedded, doc_lengths, doc_ids))
     random.shuffle(zipped)
-    word_idx, word_embedded, doc_lengths, reviews = (zip(*zipped))
+    shuffled_word_embedded, shuffled_doc_lengths, shuffled_doc_ids = (zip(*zipped))
   
     training_size = round(num_samples*TRAINING_PERCENTAGE)
     
-    training_word_idx = word_idx[:training_size]
-    training_word_embedded = word_embedded[:training_size]
-    training_doc_lengths = doc_lengths[:training_size]
-    training_shuffled_reviews = reviews[:training_size]
-    
-    validation_word_idx = word_idx[training_size:]
-    validation_word_embedded = word_embedded[training_size:]
-    validation_doc_lengths = doc_lengths[training_size:]
-    validation_shuffled_reviews = reviews[training_size:]
-    
-    print("Training size", len(training_word_idx))
-    print("Validation size", len(validation_word_idx))
-    print("Total size", len(word_idx))
-    
-    return (training_word_idx, training_word_embedded, training_doc_lengths, training_shuffled_reviews,
-            validation_word_idx, validation_word_embedded, validation_doc_lengths, validation_shuffled_reviews)
-    
-def save_single_dataset(dataset_type, idx, embedded, labels, doc_lengths, reviews):
-    # Concatenate to get one big set.
-    print("-- Dataset ids")
-    save_pickle(idx, "{}/{}/data_idx.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del idx
+    training_word_embedded = shuffled_word_embedded[:training_size]
+    training_doc_lengths = shuffled_doc_lengths[:training_size]
+    training_doc_ids = shuffled_doc_ids[:training_size]
 
-    print("-- Dataset embedded")
+    validation_word_embedded = shuffled_word_embedded[training_size:]
+    validation_doc_lengths = shuffled_doc_lengths[training_size:]
+    validation_doc_ids = shuffled_doc_ids[training_size:]
+    
+    print("Training size", len(training_word_embedded))
+    print("Validation size", len(validation_word_embedded))
+    print("Total size", len(doc_lengths))
+    
+    return (training_word_embedded, training_doc_lengths, training_doc_ids, 
+            validation_word_embedded, validation_doc_lengths, validation_doc_ids)
+    
+def save_single_dataset(dataset_type, embedded, labels, doc_lengths, doc_ids):
+    # Concatenate to get one big set.
     save_pickle(embedded, "{}/{}/data_embedded.pkl".format(DATA_SAVE_PATH, dataset_type))
     del embedded
     
-    print("-- Labels")
     save_pickle(labels, "{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type))
     del labels
     
-    print("-- Lengths")
     save_pickle(doc_lengths, "{}/{}/doc_lengths.pkl".format(DATA_SAVE_PATH, dataset_type))
     del doc_lengths
     
-    print("-- Lengths")
-    save_pickle(reviews, "{}/{}/reviews.pkl".format(DATA_SAVE_PATH, dataset_type))
-    del reviews
+    save_pickle(doc_ids, "{}/{}/doc_ids.pkl".format(DATA_SAVE_PATH, dataset_type))
+    del doc_ids
 
 def save_pickle(data, filename):
     """

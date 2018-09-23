@@ -1,55 +1,94 @@
+# Returns the saved datasets in batches. Use the function get_datasets() to 
+# get the train, validation and test set as a Dataloader.
+# By looping through a set you get a batch with:
+# - the embedded reviews (batch size, maximum review length, embedding dimension)
+# - the labels (1, batch size)
+# - the document ids (batchsize, 2), one original document id looks like "1_5.txt", 
+#   this is changed to [1, 5].
+# - the document lengths (1, batch_size), needed to know how much is padded.
+
 import torch 
 from torch.utils.data import Dataset, DataLoader
 import numpy as np 
 import pickle
-from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH, PADDING_KEY
-
-PAD_ID = None
+from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH
 
 class ImdbDataset(Dataset):
-    def __init__(self, x, y, pad_id):
+    """ Uses the embedded review, label (0 or 1), document id and document length. """
+    def __init__(self, x, y, doc_ids, doc_lengths):
         self.x = x
-        self.y = y 
-        self.pad_id = pad_id
+        self.y = y
+        self.doc_ids = doc_ids
+        self.doc_lengths = doc_lengths
 
     def __len__(self):
         return len(self.x)
 
-    def __getitem__(self, idx):
-        x = self.x[idx]
-        y = self.y[idx]
-        pad_id = self.pad_id
-        return x, y, pad_id
+    def __getitem__(self, i):
+        x = self.x[i]
+        y = self.y[i]
+        # Doc ids are also stored for analysis
+        doc_id = self.doc_ids[i]
+        doc_length = self.doc_lengths[i]
+        return {"x": x, "y": y, "doc_id": doc_id, "doc_length": doc_length}
 
 def collate(batch):
+    """ Returns one batch with the embedded review, labels and 
+    doc ids (as [1,5] instead of "1_5.txt"). """
+    embedding_dim = batch[0]["x"].shape[1]
     batch_size = len(batch)
-    x = torch.ones((batch_size, MAX_REVIEW_LENGTH))
-    y = torch.ones((batch_size))
+    x = torch.zeros((batch_size, MAX_REVIEW_LENGTH, embedding_dim))
+    y = torch.zeros((batch_size))
+    doc_ids = torch.zeros((batch_size, 2)) # doc_ids will always consist of 2 numbers.
+    doc_lengths = torch.zeros((batch_size))
     for i in range(batch_size):
-        batch_n = cut_off(batch[i][0], MAX_REVIEW_LENGTH, batch[i][2])
-        x[i] = torch.from_numpy(np.array(batch_n))
-        y[i] = torch.from_numpy(np.array(batch[i][1]))
-    return x,y 
+        batch_n = add_padding(batch[i]["x"], MAX_REVIEW_LENGTH)
+        x[i] = torch.from_numpy(batch_n)
+        y[i] = torch.from_numpy(np.array(batch[i]["y"]))
+        doc_ids[i] = torch.from_numpy(np.array(strip_doc_id(batch[i]["doc_id"])))
+        doc_lengths[i] = torch.from_numpy(np.array(batch[i]["doc_length"]))
+    return x, y, doc_ids, doc_lengths
 
-def cut_off(vector, cut_val, pad_id):
-    if len(vector) > cut_val:
-        vector = vector[:cut_val]
-    else:
-        padding_len = cut_val - len(vector)
-        vector = vector + (padding_len * [pad_id])
-    return vector
+def strip_doc_id(doc_id):
+    """ PyTorch Dataloader cannot handle strings, so the doc_ids are stripped.
+    E.g. if the original was 1_5.txt, this now becomes [1, 5] """
+    ext_removed = doc_id.rsplit(".txt")[0]
+    doc_id_list = [int(num) for num in ext_removed.split("_")]
+    return doc_id_list
 
-def get_datasets(dataset_type):
-    """ Returns the stored train, validation and test set. """
-    train_file = open("{}/{}/data.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
-    train_labels = open("{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
-    w2i_file = open("{}/w2i.pkl".format(DATA_SAVE_PATH), "rb")
-    w2i = pickle.load(w2i_file)
-    pad_id = w2i[PADDING_KEY]
-    x = pickle.load(train_file)
-    y = pickle.load(train_labels)
+def add_padding(matrix, cut_val):
+    """ Adds zero matrix if the review length is shorter than the maximum 
+    length. """
+    num_words, embedding_dim = matrix.shape
+    if num_words < MAX_REVIEW_LENGTH:
+        padding_len = MAX_REVIEW_LENGTH - num_words
+        padding = np.zeros((padding_len, embedding_dim))
+        padded_matrix = np.vstack([matrix, padding])
+    return padded_matrix
+
+def get_single_dataset(dataset_type, batch_size):
+    """ Read the saved files and transform this into a Dataloader. """
+    embedded_file = open("{}/{}/data_embedded.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
+    labels = open("{}/{}/labels.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
+    doc_ids = open("{}/{}/doc_ids.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
+    doc_lengths = open("{}/{}/doc_lengths.pkl".format(DATA_SAVE_PATH, dataset_type), "rb")
     
-    imdb_dataset = ImdbDataset(x, y, pad_id)
-    dataloader = DataLoader(imdb_dataset, batch_size=10, collate_fn=collate)
+    x = pickle.load(embedded_file)
+    y = pickle.load(labels)
+    ids = pickle.load(doc_ids)
+    lengths = pickle.load(doc_lengths)
     
+    imdb_dataset = ImdbDataset(x, y, ids, lengths)
+    dataloader = DataLoader(imdb_dataset, batch_size, collate_fn=collate)
     return dataloader
+
+def get_datasets(batch_size=10):
+    """ Returns the stored train, validation and test set. """
+    print("Getting train")
+    train = get_single_dataset("train", batch_size)
+    print("Getting validation")
+    validation = get_single_dataset("validation", batch_size)
+    print("Getting test")
+    test = get_single_dataset("test", batch_size)
+    
+    return train, validation, test
