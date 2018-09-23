@@ -6,6 +6,7 @@ import string
 import numpy as np
 import random
 from collections import Counter
+import matplotlib.pyplot as plt
 
 IMDB_PATH = "aclImdb"
 GLOVE_PATH = "glove/glove.6B.50d.txt"
@@ -39,14 +40,14 @@ def preprocess(path, w2i, embeddings):
         # Tokenize the review
         tokenized_review = str(word_tokenize(review))
         # Remove punctuation from the review
-        review = tokenized_review.translate(translator)
-        review_length = len(tokenized_review)
+        stripped_review = tokenized_review.translate(translator)
+        splitted_review = stripped_review.split()
+        review_length = len(splitted_review)
         
         REV_LENGTH.append(review_length)
         
         if review_length <= MAX_REVIEW_LENGTH:
             j += 1
-            splitted_review = review.split()
             reviews.append(splitted_review)
             indices = seq2idx(splitted_review, w2i)
             embedded_sentence = idx2embed(indices, embeddings)
@@ -54,13 +55,7 @@ def preprocess(path, w2i, embeddings):
             embedded_data.append(embedded_sentence)
             document_lengths.append(review_length)
     
-    counter = Counter(REV_LENGTH)
-    print("keys", len(counter))
-    z = [k for k, i in counter.items() if k <= 500]
-    print("KLEINER DAN", sum(z))
-    print("~~~~~~~~~", j)
-    
-    return idx_data, embedded_data, document_lengths, reviews
+    return idx_data, embedded_data, document_lengths, reviews, REV_LENGTH
 
 def seq2idx(sequence, w2i):
     """
@@ -143,10 +138,23 @@ def save_dataset(w2i, embeddings, dataset_type):
     """
     # Get the positive and negative datasets.
     print("-- Retrieving datasets from folders")
-    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
-    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
+    dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg, freq_neg = preprocess(IMDB_PATH + "/{}/neg".format(dataset_type), w2i, embeddings)
+    dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos, freq_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
     if dataset_type == "train":
+        freq_neg.extend(freq_pos)
+            
+        counter = Counter(freq_neg)
+        
+        labels, values = zip(*counter.items())
+        indexes = np.arange(len(labels))
+        width = 1
+        plt.bar(indexes, values, width)
+        plt.show()
+        
+        ekwjdhewkjdhw
+        
+        
         splitted_dataset_neg = split_dataset(dataset_neg_idx, dataset_neg_embedded, doc_lengths_neg, reviews_neg)
         splitted_dataset_pos = split_dataset(dataset_pos_idx, dataset_pos_embedded, doc_lengths_pos, reviews_pos)
         
