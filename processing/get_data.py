@@ -63,8 +63,8 @@ def add_padding(matrix, cut_val):
     if num_words < MAX_REVIEW_LENGTH:
         padding_len = MAX_REVIEW_LENGTH - num_words
         padding = np.zeros((padding_len, embedding_dim))
-        padded_matrix = np.vstack([matrix, padding])
-    return padded_matrix
+        matrix = np.vstack([matrix, padding])
+    return matrix
 
 def get_single_dataset(dataset_type, batch_size):
     """ Read the saved files and transform this into a Dataloader. """
@@ -79,7 +79,7 @@ def get_single_dataset(dataset_type, batch_size):
     lengths = pickle.load(doc_lengths)
     
     imdb_dataset = ImdbDataset(x, y, ids, lengths)
-    dataloader = DataLoader(imdb_dataset, batch_size, collate_fn=collate)
+    dataloader = DataLoader(imdb_dataset, batch_size, collate_fn=collate, shuffle=True)
     return dataloader
 
 def get_datasets(batch_size=10):

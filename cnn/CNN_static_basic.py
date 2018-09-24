@@ -18,7 +18,7 @@ class CNN(nn.Module):
   Once initialized an ConvNet object can perform forward.
   """
 
-  def __init__(self, n_channels, n_featuremaps, n_classes):
+  def __init__(self, n_channels, n_featuremaps, n_classes, seq_length):
     """
     Initializes ConvNet object. 
     
@@ -40,13 +40,12 @@ class CNN(nn.Module):
     self.conv1_3 = nn.Conv1d(n_channels, n_featuremaps, 3)
     self.conv1_4 = nn.Conv1d(n_channels, n_featuremaps, 4)
     self.conv1_5 = nn.Conv1d(n_channels, n_featuremaps, 5)
+
+    self.maxpool1_3 = nn.MaxPool1d(seq_length-3+1)
+    self.maxpool1_4 = nn.MaxPool1d(seq_length-4+1)
+    self.maxpool1_5 = nn.MaxPool1d(seq_length-5+1)
     
-    
-    self.maxpool1_3 = nn.MaxPool1d(n_featuremaps)
-    self.maxpool1_4 = nn.MaxPool1d(n_featuremaps)
-    self.maxpool1_5 = nn.MaxPool1d(n_featuremaps)
-    
-    self.linear_1 = nn.Linear(3, n_classes)
+    self.linear_1 = nn.Linear(3*n_featuremaps, n_classes)
     
  
     ########################
@@ -71,28 +70,22 @@ class CNN(nn.Module):
     # PUT YOUR CODE HERE  #
     #######################
 
-    print("x",x.shape)
-
     x_3 = F.relu_(self.conv1_3(x))
     x_4 = F.relu_(self.conv1_4(x))
     x_5 = F.relu_(self.conv1_5(x))
-    
-    print("x_3",x.shape)
     
     x_3 = self.maxpool1_3(x_3)
     x_4 = self.maxpool1_4(x_4)
     x_5 = self.maxpool1_5(x_5)
     
-    print("x_3",x_3.shape)
+    cat_3_4 = torch.cat((x_3, x_4), 1)
+    cat_3_4_5 = torch.cat((cat_3_4, x_5), 1)
+    pen_layer = torch.squeeze(cat_3_4_5, 2)
     
+    linear = self.linear_1(pen_layer)
     # Moet -1*300 worden (3*100 filters)
-    raise NotImplementedError
-    
-    x =  self.linear_1()
-    
-    
-#    out = F.softmax(x, dim=1)
-    out = x
+
+    out = F.softmax(linear, dim=1)
 
     ########################
     # END OF YOUR CODE    #
