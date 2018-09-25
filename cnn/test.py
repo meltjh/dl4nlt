@@ -9,7 +9,7 @@ Created on Sat Sep 22 15:20:25 2018
 
 import sys;
 sys.path.append('../processing/')
-from get_data import get_datasets
+from get_data import get_datasets, get_dataset
 
 import numpy as np
 from CNN_static_basic import CNN
@@ -24,7 +24,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
 LEARNING_RATE = 1e-4
-BATCH_SIZE = 300
+BATCH_SIZE = 100
 EPOCHS = 2
 
 def get_accuracy(predictions, targets):
@@ -35,11 +35,11 @@ def get_accuracy(predictions, targets):
 
 def train():
 #    dataloader_train, dataloader_validation, dataloader_test= get_datasets(BATCH_SIZE)
-    dataloader_train, _, _ = get_datasets(BATCH_SIZE)
+    dataloader_train = get_dataset("train", BATCH_SIZE)
 
     
     # Initialize the model, optimizer and loss function
-    model = CNN(50, 100, 2, 500).to(device)
+    model = CNN(50, BATCH_SIZE, 2, 500).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_function = nn.CrossEntropyLoss()
     
