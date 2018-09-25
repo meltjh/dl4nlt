@@ -9,7 +9,7 @@ Created on Sat Sep 22 15:20:25 2018
 
 import sys;
 sys.path.append('../processing/')
-from get_data import get_datasets, get_dataset
+from get_data import get_dataset
 
 import numpy as np
 from CNN_static_basic import CNN
@@ -23,7 +23,7 @@ torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-5
 BATCH_SIZE = 100
 EPOCHS = 2
 
