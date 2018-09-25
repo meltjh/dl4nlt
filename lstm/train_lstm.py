@@ -1,6 +1,7 @@
 import sys;
 sys.path.append('../processing/')
-from get_data import get_datasets
+import get_data
+from get_data import get_dataset
 
 import numpy as np
 from lstm import LSTM
@@ -8,15 +9,21 @@ from lstm import LSTM
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import importlib
 
 torch.manual_seed(42)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 300
-EPOCHS = 2
+LEARNING_RATE = 1e-4 # geprobeerd 1e-2, 1e-4
+BATCH_SIZE = 64 # geprobeerd, 32, ..., 640
+EPOCHS = 20
+NUM_CLASSES = 2
+EMBEDDING_DIM = 50
+SEQUENCE_LENGTH = 500
+NUM_HIDDEN = 32 # geprobeerd 32, 128
+NUM_LAYERS = 1
 
 def get_accuracy(predictions, targets):
     _, pred = torch.max(predictions, 1)
@@ -26,48 +33,53 @@ def get_accuracy(predictions, targets):
 
 
 def train():
+    # For colab code update
+    importlib.reload(get_data)
+    from get_data import get_dataset
+    
     # dataloader_train, _, _ = get_datasets(BATCH_SIZE)
-    dataloader_train = get_datasets(BATCH_SIZE)
-
+    dataloader_train = get_dataset("train", BATCH_SIZE)
+    num_batches = len(dataloader_train)
 
     # Initialize the model, optimizer and loss function
-    model = LSTM(50, BATCH_SIZE, 2, 128, 1).to(device)
+    model = LSTM(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, NUM_HIDDEN, NUM_LAYERS).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_function = nn.CrossEntropyLoss()
 
     sum_loss = 0
     sum_accuracy = 0
-
     for i in range(EPOCHS):
 
         for batch_i, data in enumerate(dataloader_train):
             x, y, doc_ids, doc_lengths = data
-            seq_length = x.shape[1]
 
             x = torch.tensor(x).to(device)
-            x = x.view(seq_length, BATCH_SIZE, -1)
+            x = x.view(SEQUENCE_LENGTH, -1, EMBEDDING_DIM) # Ipv de laatste -1, beter de batch -1 omdat die de laatste iteratie van de epoch vast kleiner is.
             y = torch.tensor(y).long().to(device)
 
             optimizer.zero_grad()
             outputs = model(x)
             single_loss = loss_function(outputs, y)
             single_loss.backward()
-            sum_loss += single_loss
+            
+            sum_loss += float(single_loss)
+            
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25) # Nog niet zeker wat dit doet, maar iig tegen vanishing / exploding gradient, ps, werkt niet :'(
+            
             optimizer.step()
 
-            sum_accuracy += get_accuracy(outputs, y) # fixme
+            sum_accuracy += get_accuracy(outputs, y)
+            
+        accuracy = sum_accuracy / num_batches
+        loss = sum_loss / num_batches
 
-            if batch_i % 10 == 0:
-                accuracy = sum_accuracy / 10
-                loss = sum_loss / 10
-
-                print("Train Step {}, Batch Size = {}, "
-                      "Accuracy = {:.2f}, Loss = {:.3f}".format(
-                        batch_i + i * EPOCHS, BATCH_SIZE,
-                        accuracy, loss
-                ))
-                sum_accuracy = 0
-                sum_loss = 0
+        print("Epoch {}, Batch Size = {}, "
+              "Accuracy = {:.2f}, Loss = {:.3f}".format(
+                i+1, BATCH_SIZE,
+                accuracy, loss
+        ))
+        sum_accuracy = 0
+        sum_loss = 0
 
 if __name__ == '__main__':
 
