@@ -82,13 +82,16 @@ def get_single_dataset(dataset_type, batch_size):
     dataloader = DataLoader(imdb_dataset, batch_size, collate_fn=collate, shuffle=True)
     return dataloader
 
-def get_datasets(batch_size=10):
+def get_dataset(dataset, batch_size=10):
     """ Returns the stored train, validation and test set. """
-    print("Getting train")
-    train = get_single_dataset("train", batch_size)
-    print("Getting validation")
-    validation = get_single_dataset("validation", batch_size)
-    print("Getting test")
-    test = get_single_dataset("test", batch_size)
+    if dataset == "train":
+        print("Getting train")
+        dataset = get_single_dataset("train", batch_size)
+    elif dataset == "test":
+        print("Getting validation")
+        dataset = get_single_dataset("validation", batch_size)
+    else:
+        print("Getting test")
+        dataset = get_single_dataset("test", batch_size)
     
-    return train, validation, test
+    return dataset
