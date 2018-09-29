@@ -9,6 +9,7 @@ from lstm import LSTM
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 import importlib
 
 torch.manual_seed(42)
@@ -44,23 +45,36 @@ def train():
     model = LSTM(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, NUM_HIDDEN,
                  NUM_LAYERS).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    loss_function = nn.CrossEntropyLoss()
+    loss_function = nn.BCEWithLogitsLoss()
 
     sum_loss = 0
     sum_accuracy = 0
+
     for i in range(EPOCHS):
 
         for batch_i, data in enumerate(dataloader_train):
             x, y, doc_ids, doc_lengths = data
+            SEQUENCE_LENGTH = 10
+            x = x[:, :SEQUENCE_LENGTH, :]
 
             x = torch.tensor(x).to(device)
             x = x.view(SEQUENCE_LENGTH, -1, EMBEDDING_DIM) # Ipv de laatste -1, beter de batch -1 omdat die de laatste iteratie van de epoch vast kleiner is.
             y = torch.tensor(y).long().to(device)
 
+
             optimizer.zero_grad()
+
+            y_2d = torch.zeros(y.shape[0], 2, dtype=torch.float)
+            j = torch.arange(y.shape[0]).long()
+            y_2d[j, y] = 1
+
             outputs = model(x)
-            single_loss = loss_function(outputs, y)
+
+
+            single_loss = loss_function(outputs, y_2d)
             single_loss.backward()
+
+            # print(single_loss.item())
 
             sum_loss += float(single_loss)
 
