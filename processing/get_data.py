@@ -17,7 +17,6 @@ from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #if str(device) == "cuda":
 #    DATA_SAVE_PATH = "data"
-#    print(DATA_SAVE_PATH)
 
 class ImdbDataset(Dataset):
     """ Uses the embedded review, label (0 or 1), document id and document length. """
@@ -93,7 +92,7 @@ def get_dataset(dataset, batch_size=10):
     if dataset == "train":
         print("Getting train")
         dataset = get_single_dataset("train", batch_size)
-    elif dataset == "test":
+    elif dataset == "validation":
         print("Getting validation")
         dataset = get_single_dataset("validation", batch_size)
     else:
