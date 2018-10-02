@@ -82,10 +82,8 @@ class CNN(nn.Module):
     cat_3_4_5 = torch.cat((cat_3_4, x_5), 1)
     pen_layer = torch.squeeze(cat_3_4_5, 2)
     
-    linear = self.linear_1(pen_layer)
+    out = self.linear_1(pen_layer)
     # Moet -1*300 worden (3*100 filters)
-
-    out = F.softmax(linear, dim=1)
 
     ########################
     # END OF YOUR CODE    #
