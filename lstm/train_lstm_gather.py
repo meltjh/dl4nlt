@@ -26,7 +26,7 @@ NUM_CLASSES = 2
 EMBEDDING_DIM = 50
 SEQUENCE_LENGTH = 500
 NUM_HIDDEN = 256 # geprobeerd 32, 128
-NUM_LAYERS = 1
+NUM_LAYERS = 2
 
 
 def get_accuracy(predictions, targets):
@@ -44,13 +44,19 @@ def save_checkpoint(model, optimizer, epoch):
     Saves the model.
     """
 
-    if not os.path.isdir("model_states"):
-        os.mkdir("model_states")
+    folder = "model_states"
+    hyper_parameters = "lr" + str(LEARNING_RATE) + "_batchsize" + \
+        str(BATCH_SIZE) + "_embeddim" + str(EMBEDDING_DIM) + "_hidden" + \
+        str(NUM_HIDDEN) + "_layers" + str(NUM_LAYERS)
+    file_name = folder + "/" + hyper_parameters + "_checkpoint" + \
+        str(epoch) + ".pth"
+
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
 
     state = {"state_dict": model.state_dict(),
              "optimizer": optimizer.state_dict()}
 
-    file_name = "model_states/checkpoint" + str(epoch) + ".pth"
     torch.save(state, file_name)
 
 
