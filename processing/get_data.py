@@ -13,7 +13,9 @@ import numpy as np
 import pickle
 from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH
 
-#DATA_SAVE_PATH = "data"
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#if device == "cuda":
+#    DATA_SAVE_PATH = "data"
 
 class ImdbDataset(Dataset):
     """ Uses the embedded review, label (0 or 1), document id and document length. """
