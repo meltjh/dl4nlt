@@ -58,7 +58,8 @@ def train():
             x = x[:, :SEQUENCE_LENGTH, :]
 
             x = torch.tensor(x).to(device)
-            x = x.view(SEQUENCE_LENGTH, -1, EMBEDDING_DIM) # Ipv de laatste -1, beter de batch -1 omdat die de laatste iteratie van de epoch vast kleiner is.
+            
+            x = x.permute(1,0,2)
             y = torch.tensor(y).long().to(device)
 
 
