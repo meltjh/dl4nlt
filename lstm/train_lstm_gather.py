@@ -4,7 +4,7 @@ import get_data
 from get_data import get_dataset
 
 import numpy as np
-from lstm import LSTM
+from lstm_gather import LSTM
 
 import torch
 import torch.optim as optim
