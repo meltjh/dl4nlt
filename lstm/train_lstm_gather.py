@@ -10,8 +10,9 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+
 import importlib
-import argparse
+import os
 
 torch.manual_seed(42)
 
@@ -27,19 +28,37 @@ SEQUENCE_LENGTH = 500
 NUM_HIDDEN = 256 # geprobeerd 32, 128
 NUM_LAYERS = 1
 
+
 def get_accuracy(predictions, targets):
+    """
+    Calculates the accuracy.
+    """
     _, pred = torch.max(predictions, 1)
     num_correct = torch.sum(pred == targets, dtype=torch.float, dim = 0)
     accuracy = num_correct / pred.shape[0] * 100
     return accuracy
 
-def save_checkpoint(state, epoch):
-    ''' Save the model ''' 
-    file_name = 'model_states/checkpoint' + str(epoch) + '.pth'
+
+def save_checkpoint(model, optimizer, epoch):
+    """
+    Saves the model.
+    """
+
+    if not os.path.isdir("model_states"):
+        os.mkdir("model_states")
+
+    state = {"state_dict": model.state_dict(),
+             "optimizer": optimizer.state_dict()}
+
+    file_name = "model_states/checkpoint" + str(epoch) + ".pth"
     torch.save(state, file_name)
 
 
 def train():
+    """
+    Trains the model.
+    """
+
     # For colab code update
     importlib.reload(get_data)
     from get_data import get_dataset
@@ -53,7 +72,7 @@ def train():
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_function = nn.CrossEntropyLoss()
 
-    ### LOAD MODEL IF YOU WANT TO ### 
+    ### LOAD MODEL IF YOU WANT TO ###
     # checkpoint = torch.load('model_states/checkpoint1.pth', map_location='cpu')
     # model.load_state_dict(checkpoint['state_dict'])
     # optimizer.load_state_dict(checkpoint['optimizer'])
@@ -76,11 +95,7 @@ def train():
             single_loss = loss_function(outputs, y)
             single_loss.backward()
 
-            # print(single_loss.item())
-
             sum_loss += float(single_loss)
-
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25) # Nog niet zeker wat dit doet, maar iig tegen vanishing / exploding gradient, ps, werkt niet :'(
 
             optimizer.step()
 
@@ -96,7 +111,9 @@ def train():
         ))
         sum_accuracy = 0
         sum_loss = 0
-        save_checkpoint({'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}, i)
+
+        save_checkpoint(model, optimizer, i)
+
 
 if __name__ == '__main__':
 
