@@ -45,8 +45,7 @@ def train():
     model = LSTM(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, NUM_HIDDEN,
                  NUM_LAYERS).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    # loss_function = nn.BCEWithLogitsLoss()
-    loss_function = nn.CrossEntropyLoss()
+    loss_function = nn.BCEWithLogitsLoss()
 
     sum_loss = 0
     sum_accuracy = 0
@@ -55,7 +54,8 @@ def train():
 
         for batch_i, data in enumerate(dataloader_train):
             x, y, doc_ids, doc_lengths = data
-            # x = x[:, :SEQUENCE_LENGTH, :]
+            SEQUENCE_LENGTH = 10
+            x = x[:, :SEQUENCE_LENGTH, :]
 
             x = torch.tensor(x).to(device)
             
@@ -65,16 +65,14 @@ def train():
 
             optimizer.zero_grad()
 
-            # y_2d = torch.zeros(y.shape[0], 2, dtype=torch.float)
-            # j = torch.arange(y.shape[0]).long()
-            # y_2d[j, y] = 1
+            y_2d = torch.zeros(y.shape[0], 2, dtype=torch.float)
+            j = torch.arange(y.shape[0]).long()
+            y_2d[j, y] = 1
 
-            outputs = model(x, doc_lengths)
+            outputs = model(x)
 
 
-            # single_loss = loss_function(outputs, y_2d)
-            single_loss = loss_function(outputs, y)
-            # print(single_loss)
+            single_loss = loss_function(outputs, y_2d)
             single_loss.backward()
 
             # print(single_loss.item())
