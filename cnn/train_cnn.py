@@ -47,6 +47,8 @@ def train():
     dataloader_train = get_dataset("train", BATCH_SIZE)
     num_batches = len(dataloader_train)
     
+    dataloader_validation = get_dataset("validation", BATCH_SIZE)
+    
     # Initialize the model, optimizer and loss function
     model = CNN(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, SEQUENCE_LENGTH).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -81,6 +83,18 @@ def train():
         ))
         sum_accuracy = 0
         sum_loss = 0
+        
+        # Test on validation set
+        sum_accuracy_validation = 0.0
+        for validation_batch in dataloader_validation:
+            x_val, y_val, doc_ids_val, doc_lengths_val = validation_batch
+            x_val = torch.tensor(x_val).to(device)
+            x_val = x_val.view(-1, EMBEDDING_DIM, SEQUENCE_LENGTH)
+            y_val = torch.tensor(y_val).long().to(device)
+            outputs_val = model(x_val)
+            sum_accuracy_validation += get_accuracy(outputs_val, y_val)
+        accuracy_validation = sum_accuracy_validation / len(dataloader_validation)
+        print("--- Validation accuracy = {:.2f}".format(accuracy_validation))
 
 if __name__ == '__main__':
   
