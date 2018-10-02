@@ -11,6 +11,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 import importlib
+import argparse
 
 torch.manual_seed(42)
 
@@ -32,6 +33,11 @@ def get_accuracy(predictions, targets):
     accuracy = num_correct / pred.shape[0] * 100
     return accuracy
 
+def save_checkpoint(state, epoch):
+    ''' Save the model ''' 
+    file_name = 'model_states/checkpoint' + str(epoch) + '.pth'
+    torch.save(state, file_name)
+
 
 def train():
     # For colab code update
@@ -45,8 +51,12 @@ def train():
     model = LSTM(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, NUM_HIDDEN,
                  NUM_LAYERS).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    # loss_function = nn.BCEWithLogitsLoss()
     loss_function = nn.CrossEntropyLoss()
+
+    ### LOAD MODEL IF YOU WANT TO ### 
+    # checkpoint = torch.load('model_states/checkpoint1.pth', map_location='cpu')
+    # model.load_state_dict(checkpoint['state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer'])
 
     sum_loss = 0
     sum_accuracy = 0
@@ -55,26 +65,15 @@ def train():
 
         for batch_i, data in enumerate(dataloader_train):
             x, y, doc_ids, doc_lengths = data
-            # x = x[:, :SEQUENCE_LENGTH, :]
 
             x = torch.tensor(x).to(device)
-            
-            x = x.permute(1,0,2)
             y = torch.tensor(y).long().to(device)
-
 
             optimizer.zero_grad()
 
-            # y_2d = torch.zeros(y.shape[0], 2, dtype=torch.float)
-            # j = torch.arange(y.shape[0]).long()
-            # y_2d[j, y] = 1
-
             outputs = model(x, doc_lengths)
 
-
-            # single_loss = loss_function(outputs, y_2d)
             single_loss = loss_function(outputs, y)
-            # print(single_loss)
             single_loss.backward()
 
             # print(single_loss.item())
@@ -97,6 +96,7 @@ def train():
         ))
         sum_accuracy = 0
         sum_loss = 0
+        save_checkpoint({'state_dict':model.state_dict(), 'optimizer': optimizer.state_dict()}, i)
 
 if __name__ == '__main__':
 
