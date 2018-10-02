@@ -25,8 +25,9 @@ torch.manual_seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 0.001
 BATCH_SIZE = 100
+NUM_FEATUREMAPS = 100
 EPOCHS = 20
 NUM_CLASSES = 2
 EMBEDDING_DIM = 50
@@ -50,8 +51,8 @@ def train():
     dataloader_validation = get_dataset("validation", BATCH_SIZE)
     
     # Initialize the model, optimizer and loss function
-    model = CNN(EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, SEQUENCE_LENGTH).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    model = CNN(EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=0.01)
     loss_function = nn.CrossEntropyLoss()
     
     sum_loss = 0
@@ -61,11 +62,11 @@ def train():
         for batch_i, data in enumerate(dataloader_train):    
             x, y, doc_ids, doc_lengths = data
             x = torch.tensor(x).to(device)
-            x = x.view(-1, EMBEDDING_DIM, SEQUENCE_LENGTH)
+            x = torch.transpose(x, 1, 2)
             y = torch.tensor(y).long().to(device)
                   
             optimizer.zero_grad()
-            outputs = model(x)
+            outputs = model.forward(x, True)
             single_loss = loss_function(outputs, y)
             single_loss.backward()
             sum_loss += single_loss
@@ -89,9 +90,9 @@ def train():
         for validation_batch in dataloader_validation:
             x_val, y_val, doc_ids_val, doc_lengths_val = validation_batch
             x_val = torch.tensor(x_val).to(device)
-            x_val = x_val.view(-1, EMBEDDING_DIM, SEQUENCE_LENGTH)
+            x_val = torch.transpose(x_val, 1, 2)
             y_val = torch.tensor(y_val).long().to(device)
-            outputs_val = model(x_val)
+            outputs_val = model.forward(x_val, False)
             sum_accuracy_validation += get_accuracy(outputs_val, y_val)
         accuracy_validation = sum_accuracy_validation / len(dataloader_validation)
         print("--- Validation accuracy = {:.2f}".format(accuracy_validation))

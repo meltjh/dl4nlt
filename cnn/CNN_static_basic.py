@@ -46,13 +46,13 @@ class CNN(nn.Module):
     self.maxpool1_5 = nn.MaxPool1d(seq_length-5+1)
     
     self.linear_1 = nn.Linear(3*n_featuremaps, n_classes)
-    
+#    self.dropout = nn.Dropout(0.5)
  
     ########################
     # END OF YOUR CODE    #
     #######################
 
-  def forward(self, x):
+  def forward(self, x, is_train):
     """
     Performs forward pass of the input. Here an input tensor x is transformed through 
     several layer transformations.
@@ -65,10 +65,6 @@ class CNN(nn.Module):
     TODO:
     Implement forward pass of the network.
     """
-
-    ########################
-    # PUT YOUR CODE HERE  #
-    #######################
 
     x_3 = F.relu_(self.conv1_3(x))
     x_4 = F.relu_(self.conv1_4(x))
@@ -84,9 +80,7 @@ class CNN(nn.Module):
     
     out = self.linear_1(pen_layer)
     # Moet -1*300 worden (3*100 filters)
-
-    ########################
-    # END OF YOUR CODE    #
-    #######################
+#    if is_train:
+#        out = self.dropout(out)
 
     return out
