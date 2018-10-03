@@ -1,7 +1,9 @@
 import torch
 
+import matplotlib.pyplot as plt
 from os import listdir
 from os.path import isfile, join
+import re
 
 import sys
 sys.path.append('../processing/')
@@ -25,7 +27,12 @@ def get_files(folder):
     Returns all model files in a folder.
     """
 
-    return [join(folder, f) for f in listdir(folder) if isfile(join(folder, f))]
+    files = [join(folder, f) for f in listdir(folder) if
+    isfile(join(folder, f))]
+
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(files, key=alphanum_key)
 
 
 def get_model(file_name):
@@ -114,14 +121,73 @@ def get_precision_recall(true_positives, false_positives, false_negatives):
     return precision, recall
 
 
-if __name__ == "__main__":
-    val_loader = get_dataset("validation", BATCH_SIZE)
-    # test_loader = get_dataset("test", BATCH_SIZE)
+def get_training_results(file_name):
+    """
+    Retrieves the accuracies and losses that were obtained from a file.
+    """
 
+    accuracies = []
+    losses = []
+
+    with open(file_name, "r") as f:
+        for line in f.readlines():
+            split_line = line.split(",")
+            accuracy = float(split_line[2].split("=")[1])
+            accuracies.append(accuracy)
+            loss = float(split_line[3].split("=")[1])
+            losses.append(loss)
+    return accuracies, losses
+
+
+def plot_results(train_loss, train_accuracy, validation_accuracy):
+    """
+    Plots the training loss, training accuracy and validation accuracy.
+    """
+
+    fig, ax1 = plt.subplots()
+
+    ax1.set_xlabel('Epochs')
+    ax1.set_ylabel('Accuracy %', color='C0')
+    ax1.tick_params('y', colors='C0')
+
+    ax1.plot(train_accuracy, color='C0', linestyle=":", label="Train")
+    ax1.plot(validation_accuracy, color='C0', linestyle='--',
+             label="Validation")
+
+    ax1.legend()
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Loss', color='C1')
+    ax2.tick_params('y', colors='C1')
+
+    ax2.plot(train_loss, color='C1', linestyle="-", label="Loss")
+
+    fig.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    ### For validation set and plots
+    val_accuracy = []
+    val_loader = get_dataset("validation", BATCH_SIZE)
     file_names = get_files("model_states")
 
     for file_name in file_names:
         model = get_model(file_name)
-        evaluation = evaluate(model, val_loader)
-        print(file_name, str(evaluation))
-        break
+        accuracy, _, _ = evaluate(model, val_loader)
+        print(file_name, str(accuracy))
+        val_accuracy.append(accuracy)
+
+
+    train_accuracy, train_loss = get_training_results("512.txt")
+    plot_results(train_loss, train_accuracy, val_accuracy)
+
+    ## For final evalution on test set
+    # test_loader = get_dataset("test", BATCH_SIZE)
+    # file_name = "model_states/checkpoint19.pth"
+    # model = get_model(file_name)
+    # accuracy, precision, recall = evaluate(model, test_loader)
+    # print("File:", file_name)
+    # print("Accuracy:", str(accuracy))
+    # print("Precision:", str(precision))
+    # prrint("Recall:", str(recall))
