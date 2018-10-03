@@ -7,8 +7,8 @@ parser = argparse.ArgumentParser()
 # DUMMY COMMAND 
 # python plot_val.py --dir_val TXTFILE1.txt TXTFILE2.txt --lr LR1 LR2 --output 'plot.png'
 
-parser.add_argument('--dir_val', nargs='+', help='specify each validation accuracy results with comma')
-parser.add_argument('--lr',nargs='+', help='list of values of learning rate respectively')
+parser.add_argument('--dir_val', nargs='+', help='specify each validation accuracy results text file')
+parser.add_argument('--lr',nargs='+', help='values of learning rate respectively')
 parser.add_argument('--output', type=str, help='name of output plot .png')
 config, unparsed = parser.parse_known_args()
 
