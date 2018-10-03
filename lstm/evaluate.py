@@ -166,6 +166,16 @@ def plot_results(train_loss, train_accuracy, validation_accuracy):
     plt.show()
 
 
+def save_results(file_names, accuracies):
+    validation_file = file_names[-1].split("/")[1]
+    validation_file = validation_file[:validation_file.rfind("_")] + ".txt"
+
+    with open(validation_file, "wb") as f:
+        for accuracy in accuracies:
+            f.write(str(accuracy) + "\n")
+    f.close()
+
+
 if __name__ == "__main__":
     ### For validation set and plots
     val_accuracy = []
@@ -179,6 +189,7 @@ if __name__ == "__main__":
         val_accuracy.append(accuracy)
 
 
+    save_results(file_names, val_accuracy)
     train_accuracy, train_loss = get_training_results("512.txt")
     plot_results(train_loss, train_accuracy, val_accuracy)
 
