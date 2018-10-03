@@ -42,20 +42,16 @@ def get_model(file_name):
     return model
 
 
-def get_accuracy(predictions, targets):
-    """
-    Calculates the accuracy.
-    """
-
-    _, pred = torch.max(predictions, 1)
-    num_correct = torch.sum(pred == targets, dtype=torch.float, dim = 0)
-    accuracy = num_correct / pred.shape[0] * 100
-    return accuracy
-
-
 def evaluate(model, dataloader):
+    """
+    Evaluates the model by calculating the accuracy, precision and recall.
+    """
+
     num_batches = len(dataloader)
     sum_accuracy = 0
+    true_positives = 0
+    false_positives = 0
+    false_negatives = 0
 
     with torch.no_grad():
         for batch_i, data in enumerate(dataloader):
@@ -65,10 +61,58 @@ def evaluate(model, dataloader):
             y = torch.tensor(y).long().to(device)
 
             outputs = model(x, doc_lengths)
+            outputs = torch.max(outputs, 1)[1]
+
             accuracy = get_accuracy(outputs, y)
             sum_accuracy += accuracy.item()
 
-    return sum_accuracy/num_batches
+            tp, fp, fn = get_TP_FP_FN(outputs, y)
+            true_positives += tp
+            false_positives += fp
+            false_negatives += fn
+
+    precision, recall = get_precision_recall(true_positives, false_positives,
+                                             false_negatives)
+    return sum_accuracy/num_batches, precision, recall
+
+
+def get_accuracy(predictions, targets):
+    """
+    Calculates the accuracy.
+    """
+
+    num_correct = torch.sum(predictions == targets, dtype=torch.float, dim=0)
+    accuracy = num_correct / predictions.shape[0] * 100
+    return accuracy
+
+
+def get_TP_FP_FN(predictions, targets):
+    """
+    Calculates the true positives, false positives and false negatives between
+    a set of predictions and targets.
+    """
+
+    true = torch.ones(predictions.shape)
+    false = torch.zeros(predictions.shape)
+
+    true_positives = torch.sum(torch.where((targets==1) & (predictions==1),
+                                           true, false)).item()
+    false_positives = torch.sum(torch.where((targets==0) & (predictions==1),
+                                            true, false)).item()
+    false_negatives = torch.sum(torch.where((targets==1) & (predictions==0),
+                                            true, false)).item()
+    return true_positives, false_positives, false_negatives
+
+
+def get_precision_recall(true_positives, false_positives, false_negatives):
+    """
+    Calculates the precision and recall.
+    """
+
+    precision = true_positives/(true_positives + false_positives)
+    recall = true_positives/(true_positives + false_negatives)
+    return precision, recall
+
 
 if __name__ == "__main__":
     val_loader = get_dataset("validation", BATCH_SIZE)
@@ -78,5 +122,6 @@ if __name__ == "__main__":
 
     for file_name in file_names:
         model = get_model(file_name)
-        accuracy = evaluate(model, val_loader)
-        print(file_name, str(accuracy))
+        evaluation = evaluate(model, val_loader)
+        print(file_name, str(evaluation))
+        break
