@@ -139,7 +139,7 @@ def get_training_results(file_name):
     return accuracies, losses
 
 
-def plot_results(train_loss, train_accuracy, validation_accuracy):
+def plot_results(train_loss, train_accuracy, validation_accuracy, file_name):
     """
     Plots the training loss, training accuracy and validation accuracy.
     """
@@ -163,17 +163,19 @@ def plot_results(train_loss, train_accuracy, validation_accuracy):
     ax2.plot(train_loss, color='C1', linestyle="-", label="Loss")
 
     fig.tight_layout()
+    plt.savefig(file_name + ".png")
     plt.show()
+    # plt.savefig(file_name + ".png")
 
 
 def save_results(file_names, accuracies):
     validation_file = file_names[-1].split("/")[1]
-    validation_file = validation_file[:validation_file.rfind("_")] + ".txt"
-
-    with open(validation_file, "wb") as f:
+    validation_file = validation_file[:validation_file.rfind("_")]
+    with open('val_' + validation_file + '.txt', "w") as f:
         for accuracy in accuracies:
             f.write(str(accuracy) + "\n")
     f.close()
+    return validation_file 
 
 
 if __name__ == "__main__":
@@ -188,10 +190,9 @@ if __name__ == "__main__":
         print(file_name, str(accuracy))
         val_accuracy.append(accuracy)
 
-
-    save_results(file_names, val_accuracy)
-    train_accuracy, train_loss = get_training_results("512.txt")
-    plot_results(train_loss, train_accuracy, val_accuracy)
+    file_name = save_results(file_names, val_accuracy)
+    train_accuracy, train_loss = get_training_results("train_result_lr-e3-256.txt")
+    plot_results(train_loss, train_accuracy, val_accuracy, file_name)
 
     ## For final evalution on test set
     # test_loader = get_dataset("test", BATCH_SIZE)
