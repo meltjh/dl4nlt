@@ -25,15 +25,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
 MODEL = "CNN" # "CNN", "LSTM", "LSTM_CNN"
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 0.0001
 BATCH_SIZE = 64
-EPOCHS = 10
+EPOCHS = 25
 NUM_CLASSES = 2
 WORD_EMBEDDING_DIM = 50
 SEQUENCE_LENGTH = 500
 NUM_HIDDEN = 256
 NUM_FEATUREMAPS = 128
 NUM_LSTM_LAYERS = 2
+DROP_OUT = 0
+REGULARISATION = 0
 
 def get_accuracy(predictions, targets):
     """
@@ -50,9 +52,9 @@ def save_checkpoint(model, optimizer, epoch):
     """
 
     folder = "model_states"
-    hyper_parameters = "lr" + str(LEARNING_RATE) + "_batchsize" + \
+    hyper_parameters = str(MODEL) + "lr" + str(LEARNING_RATE) + "_batchsize" + \
         str(BATCH_SIZE) + "_embeddim" + str(WORD_EMBEDDING_DIM) + "_hidden" + \
-        str(NUM_HIDDEN) + "_layers" + str(NUM_LSTM_LAYERS)
+        str(NUM_HIDDEN) + "_layers" + str(NUM_LSTM_LAYERS) + "_dropout" + str(DROP_OUT) +"_regularisation" + str(REGULARISATION)
     file_name = folder + "/" + hyper_parameters + "_checkpoint" + \
         str(epoch) + ".pth"
 
@@ -82,6 +84,7 @@ def plot_results(loss_history, accuracy_history_train, accuracy_history_validati
     ax2.plot(loss_history, color='C1', linestyle="-", label="Loss")
     
     fig.tight_layout()
+    plt.title = MODEL
     plt.show()
 
 
@@ -101,18 +104,18 @@ def train():
 
     # Initialize the model, optimizer and loss function
     if MODEL == "CNN":
-        model = cnn.CNN(WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH).to(device)
-        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_FEATUREMAPS {}, NUM_CLASSES {}, SEQUENCE_LENGTH {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH))
+        model = cnn.CNN(WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT).to(device)
+        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_FEATUREMAPS {}, NUM_CLASSES {}, SEQUENCE_LENGTH {}, DROP_OUT {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT, REGULARISATION))
     elif MODEL == "LSTM":
         model = lstm_gather.LSTM(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, device).to(device)
-        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS))
+        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, REGULARISATION))
     elif MODEL == "LSTM_CNN":
         model = lstm_cnn.LSTM_CNN(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH).to(device)
-        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, NUM_FEATUREMAPS {}, SEQUENCE_LENGTH {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH))
+        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, NUM_FEATUREMAPS {}, SEQUENCE_LENGTH {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH, REGULARISATION))
     else:
         raise NotImplementedError("Model {} does not exist".format(MODEL))
     
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=REGULARISATION)
     loss_function = nn.CrossEntropyLoss()
 
     ### LOAD MODEL IF YOU WANT TO ###
@@ -166,7 +169,7 @@ def train():
         accuracy = sum_accuracy / num_batches
         loss = sum_loss / num_batches
 
-        print("Epoch {}, Loss = {:.3f}, Train accuracy = {:.2f}, Test accuracy = {:.2f}".format(
+        print("Epoch {}, Loss = {:.3f}, Train accuracy = {:.2f}, Validation accuracy = {:.2f}".format(
                 i+1, loss, accuracy, accuracy_validation))
         
         # Append results for plot

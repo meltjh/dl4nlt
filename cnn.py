@@ -18,7 +18,7 @@ class CNN(nn.Module):
   Once initialized an ConvNet object can perform forward.
   """
 
-  def __init__(self, n_channels, n_featuremaps, n_classes, seq_length):
+  def __init__(self, n_channels, n_featuremaps, n_classes, seq_length, dropout):
     """
     Initializes ConvNet object. 
     
@@ -46,7 +46,7 @@ class CNN(nn.Module):
     self.maxpool1_5 = nn.MaxPool1d(seq_length-5+1)
     
     self.linear_1 = nn.Linear(3*n_featuremaps, n_classes)
-#    self.dropout = nn.Dropout(0.5)
+    self.dropout = nn.Dropout(dropout)
  
     ########################
     # END OF YOUR CODE    #
@@ -81,7 +81,7 @@ class CNN(nn.Module):
     
     out = self.linear_1(pen_layer)
     # Moet -1*300 worden (3*100 filters)
-#    if is_train:
-#        out = self.dropout(out)
+    if is_train:
+        out = self.dropout(out)
 
     return out
