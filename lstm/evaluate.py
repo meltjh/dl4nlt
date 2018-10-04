@@ -180,26 +180,27 @@ def save_results(file_names, accuracies):
 
 if __name__ == "__main__":
     ### For validation set and plots
-    val_accuracy = []
-    val_loader = get_dataset("validation", BATCH_SIZE)
-    file_names = get_files("model_states")
+    # val_accuracy = []
+    # val_loader = get_dataset("validation", BATCH_SIZE)
+    # file_names = get_files("model_states")
 
-    for file_name in file_names:
-        model = get_model(file_name)
-        accuracy, _, _ = evaluate(model, val_loader)
-        print(file_name, str(accuracy))
-        val_accuracy.append(accuracy)
+    # for file_name in file_names:
+    #     model = get_model(file_name)
+    #     accuracy, _, _ = evaluate(model, val_loader)
+    #     print(file_name, str(accuracy))
+    #     val_accuracy.append(accuracy)
 
-    file_name = save_results(file_names, val_accuracy)
-    train_accuracy, train_loss = get_training_results("train_result_lr-e3-256.txt")
-    plot_results(train_loss, train_accuracy, val_accuracy, file_name)
+    # file_name = save_results(file_names, val_accuracy)
+    # train_accuracy, train_loss = get_training_results("train_result_lr1-e5-256.txt")
+    # plot_results(train_loss, train_accuracy, val_accuracy, file_name)
 
-    ## For final evalution on test set
-    # test_loader = get_dataset("test", BATCH_SIZE)
+    # For final evalution on test set
+    test_loader = get_dataset("test", BATCH_SIZE)
     # file_name = "model_states/checkpoint19.pth"
-    # model = get_model(file_name)
-    # accuracy, precision, recall = evaluate(model, test_loader)
-    # print("File:", file_name)
-    # print("Accuracy:", str(accuracy))
-    # print("Precision:", str(precision))
-    # prrint("Recall:", str(recall))
+    file_name = "model1e-3/lr0.001_batchsize64_embeddim50_hidden256_layers1_checkpoint31.pth"
+    model = get_model(file_name)
+    accuracy, precision, recall = evaluate(model, test_loader)
+    print("File:", file_name)
+    print("Accuracy:", str(accuracy))
+    print("Precision:", str(precision))
+    print("Recall:", str(recall))
