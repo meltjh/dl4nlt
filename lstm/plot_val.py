@@ -1,6 +1,7 @@
 import argparse 
 import matplotlib.pyplot as plt
 import numpy as np 
+plt.rcParams.update({'font.size': 12})
 parser = argparse.ArgumentParser()
 # FOR EXAMPLE RUNNING COMMAND: 
 # python plot_val.py --dir_val val_lr0.001_batchsize64_embeddim50_hidden256_layers1.txt val_lr1e-05_batchsize64_embeddim50_hidden256_layers1.txt validation_lr1e-4-256.txt --lr 1e-03 1e-04 1e-05 --output 'val_256_lr.png'
@@ -24,8 +25,8 @@ for idx, file in enumerate(file_names):
 		plt.xticks(xi)
 		# plt.axis(np.arange(1,len(accuracy)+1))
 plt.legend()
-plt.savefig(config.output)
 plt.xlabel('Number of epochs')
 plt.ylabel('Accuracy')
+plt.savefig(config.output)
 plt.show()
 
