@@ -13,11 +13,6 @@ import numpy as np
 import pickle
 from preprocess_data import MAX_REVIEW_LENGTH, DATA_SAVE_PATH
 
-# Only use this part when using Colab!!
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#if str(device) == "cuda":
-#    DATA_SAVE_PATH = "data"
-
 class ImdbDataset(Dataset):
     """ Uses the embedded review, label (0 or 1), document id and document length. """
     def __init__(self, x, y, doc_ids, doc_lengths):

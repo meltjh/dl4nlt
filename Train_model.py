@@ -3,20 +3,14 @@ sys.path.append('processing/')
 import get_data
 from get_data import get_dataset
 
-import numpy as np
-
 import lstm_cnn
 import cnn
-import lstm_gather
-
+import lstm
 import torch
 import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-
 import matplotlib.pyplot as plt
-
-import importlib
 import os
 
 torch.manual_seed(42)
@@ -25,17 +19,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Running on device: {}".format(device))
 
 MODEL = "CNN" # "CNN", "LSTM", "LSTM_CNN"
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.005
 BATCH_SIZE = 64
-EPOCHS = 25
+EPOCHS = 40
 NUM_CLASSES = 2
 WORD_EMBEDDING_DIM = 50
 SEQUENCE_LENGTH = 500
 NUM_HIDDEN = 256
-NUM_FEATUREMAPS = 128
+NUM_FEATUREMAPS = 512
 NUM_LSTM_LAYERS = 2
-DROP_OUT = 0
-REGULARISATION = 0
+DROP_OUT = 0.5
+REGULARISATION = 0.001
+
+print("Learning rate", LEARNING_RATE)
 
 def get_accuracy(predictions, targets):
     """
@@ -93,10 +89,6 @@ def train():
     Trains the model.
     """
 
-    # For colab code update
-    importlib.reload(get_data)
-    from get_data import get_dataset
-
     dataloader_train = get_dataset("train", BATCH_SIZE)
     num_batches = len(dataloader_train)
     
@@ -107,11 +99,11 @@ def train():
         model = cnn.CNN(WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT).to(device)
         print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_FEATUREMAPS {}, NUM_CLASSES {}, SEQUENCE_LENGTH {}, DROP_OUT {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT, REGULARISATION))
     elif MODEL == "LSTM":
-        model = lstm_gather.LSTM(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, device).to(device)
+        model = lstm.LSTM(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, device).to(device)
         print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, REGULARISATION))
     elif MODEL == "LSTM_CNN":
-        model = lstm_cnn.LSTM_CNN(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH).to(device)
-        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, NUM_FEATUREMAPS {}, SEQUENCE_LENGTH {}, REGULARISATION {}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH, REGULARISATION))
+        model = lstm_cnn.LSTM_CNN(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH, DROP_OUT).to(device)
+        print("MODEL {}, WORD_EMBEDDING_DIM {}, NUM_CLASSES {}, NUM_HIDDEN {}, NUM_LSTM_LAYERS {}, NUM_FEATUREMAPS {}, SEQUENCE_LENGTH {}, REGULARISATION {}, DROP_OUT{}".format(MODEL, WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH, REGULARISATION, DROP_OUT))
     else:
         raise NotImplementedError("Model {} does not exist".format(MODEL))
     
@@ -122,7 +114,6 @@ def train():
     # checkpoint = torch.load('model_states/checkpoint1.pth', map_location='cpu')
     # model.load_state_dict(checkpoint['state_dict'])
     # optimizer.load_state_dict(checkpoint['optimizer'])
-
 
     loss_history = []
     accuracy_history_train = []
@@ -135,14 +126,12 @@ def train():
 
         for batch_i, data in enumerate(dataloader_train):
             x, y, doc_ids, doc_lengths = data
-
             x = torch.tensor(x).to(device)
             y = torch.tensor(y).long().to(device)
             
             optimizer.zero_grad()
 
             outputs = model(x, doc_lengths)
-
             single_loss = loss_function(outputs, y)
             single_loss.backward()
 
@@ -152,9 +141,7 @@ def train():
 
             sum_accuracy += get_accuracy(outputs, y)
 
-
         # Epoch done, print results
-        
         # Test on validation set
         sum_accuracy_validation = 0.0
         for validation_batch in dataloader_validation:

@@ -1,14 +1,8 @@
 import torch
-
-import matplotlib.pyplot as plt
-from os import listdir
-from os.path import isfile, join
-import re
-
 import sys
 sys.path.append('../processing')
 import preprocess_data
-from processing.get_data import get_dataset
+from get_data import get_dataset
 sys.path.append('../')
 from lstm import LSTM
 from cnn import CNN
@@ -16,7 +10,7 @@ from lstm_cnn import LSTM_CNN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-MODEL = "LSTM" # "CNN", "LSTM", "LSTM_CNN"
+MODEL = "CNN" # "CNN", "LSTM", "LSTM_CNN"
 LEARNING_RATE = 0.0005
 BATCH_SIZE = 64
 EPOCHS = 40
@@ -27,7 +21,7 @@ DROP_OUT = 0.5
 REGULARISATION = 0.001
 
 # For LSTM
-NUM_LSTM_LAYERS = 2
+NUM_LSTM_LAYERS = 1
 NUM_HIDDEN = 256
 
 # For CNN
@@ -42,9 +36,9 @@ def get_model(file_name):
     elif MODEL == "CNN":
         model = CNN(WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT).to(device)
     else:
-        model = LSTM_CNN(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH).to(device)
+        model = LSTM_CNN(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, NUM_FEATUREMAPS, SEQUENCE_LENGTH, DROP_OUT).to(device)
 
-    saved = torch.load(file_name, map_location="cpu")
+    saved = torch.load(file_name, map_location=lambda storage, loc: storage)
     model.load_state_dict(saved["state_dict"])
     print("Loaded model")
     return model
@@ -60,9 +54,11 @@ def evaluate(model, dataloader):
     true_positives = 0
     false_positives = 0
     false_negatives = 0
-
+    
+    print("Number of batches:", num_batches)
     with torch.no_grad():
         for batch_i, data in enumerate(dataloader):
+            print("{}/{}".format(batch_i, num_batches))
             x, y, doc_ids, doc_lengths = data
 
             x = torch.tensor(x).to(device)
@@ -99,8 +95,8 @@ def get_TP_FP_FN(predictions, targets):
     a set of predictions and targets.
     """
 
-    true = torch.ones(predictions.shape)
-    false = torch.zeros(predictions.shape)
+    true = torch.ones(predictions.shape).to(device)
+    false = torch.zeros(predictions.shape).to(device)
 
     true_positives = torch.sum(torch.where((targets==1) & (predictions==1),
                                            true, false)).item()
@@ -121,8 +117,9 @@ def get_precision_recall(true_positives, false_positives, false_negatives):
     return precision, recall
 
 if __name__ == "__main__":
+    
     test_loader = get_dataset("test", BATCH_SIZE)
-    file_name = "final_models/LSTMlr0.005_batchsize64_embeddim50_hidden256_layers2_dropout0.5_regularisation0.001_checkpoint22.pth"
+    file_name = "final_models/CNNlr0.0005_batchsize64_embeddim50_hidden256_featuremaps512_layers1_dropout0.5_regularisation0.001_checkpoint39.pth"
     model = get_model(file_name)
     accuracy, precision, recall = evaluate(model, test_loader)
     print("File:", file_name)

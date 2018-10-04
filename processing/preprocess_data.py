@@ -19,8 +19,8 @@ def preprocess(path, w2i, embeddings):
     """
     Finds all reviews in a folder and converts them to lowercase, tokenizes
     them and removes punctuation. If the length of the review is longer than
-    MAX_REVIEW_LENGTH words, don't use it. Returns a list of lists with indices of the words
-    that occur in the review.
+    MAX_REVIEW_LENGTH words, don't use it. Returns a list of lists with indices 
+    of the words that occur in the review.
     """
     files = [f for f in listdir(path) if isfile(join(path, f))]
     translator = str.maketrans('', '', string.punctuation)
@@ -179,7 +179,7 @@ def save_dataset(w2i, embeddings, dataset_type):
     dataset_pos_embedded, doc_lengths_pos, doc_ids_pos, freq_pos = preprocess(IMDB_PATH + "/{}/pos".format(dataset_type), w2i, embeddings)
     
     # Plot the frequencies
-#    plot_frequencies(dataset_type, freq_neg, freq_pos)
+    plot_frequencies(dataset_type, freq_neg, freq_pos)
     
     if dataset_type == "train":
         dataset_neg = (dataset_neg_embedded, doc_lengths_neg, doc_ids_neg)
