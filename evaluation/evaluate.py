@@ -9,32 +9,36 @@ import sys
 sys.path.append('../processing')
 import preprocess_data
 from processing.get_data import get_dataset
-#from lstm_gather import LSTM
+sys.path.append('../')
+from lstm import LSTM
 from cnn import CNN
 from lstm_cnn import LSTM_CNN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-MODEL = "CNN" # "CNN", "LSTM", "LSTM_CNN"
+MODEL = "LSTM" # "CNN", "LSTM", "LSTM_CNN"
 LEARNING_RATE = 0.0005
 BATCH_SIZE = 64
 EPOCHS = 40
 NUM_CLASSES = 2
 WORD_EMBEDDING_DIM = 50
 SEQUENCE_LENGTH = 500
-NUM_HIDDEN = 256
-NUM_FEATUREMAPS = 512
-NUM_LSTM_LAYERS = 1
 DROP_OUT = 0.5
 REGULARISATION = 0.001
+
+# For LSTM
+NUM_LSTM_LAYERS = 2
+NUM_HIDDEN = 256
+
+# For CNN
+NUM_FEATUREMAPS = 512
 
 def get_model(file_name):
     """
     Loads the model and optimizer.
     """
     if MODEL == "LSTM":
-        model = LSTM(WORD_EMBEDDING_DIM, BATCH_SIZE, NUM_CLASSES, NUM_HIDDEN,
-        NUM_LSTM_LAYERS).to(device)
+        model = LSTM(WORD_EMBEDDING_DIM, NUM_CLASSES, NUM_HIDDEN, NUM_LSTM_LAYERS, device).to(device)
     elif MODEL == "CNN":
         model = CNN(WORD_EMBEDDING_DIM, NUM_FEATUREMAPS, NUM_CLASSES, SEQUENCE_LENGTH, DROP_OUT).to(device)
     else:
@@ -64,7 +68,7 @@ def evaluate(model, dataloader):
             x = torch.tensor(x).to(device)
             y = torch.tensor(y).long().to(device)
 
-            outputs = model(x, doc_lengths)
+            outputs = model(x, doc_lengths, False)
             outputs = torch.max(outputs, 1)[1]
 
             accuracy = get_accuracy(outputs, y)
@@ -117,9 +121,8 @@ def get_precision_recall(true_positives, false_positives, false_negatives):
     return precision, recall
 
 if __name__ == "__main__":
-    # For final evalution on test set
     test_loader = get_dataset("test", BATCH_SIZE)
-    file_name = "final_models/CNNlr0.0005_batchsize64_embeddim50_hidden256_featuremaps512_layers1_dropout0.5_regularisation0.001_checkpoint39.pth"
+    file_name = "final_models/LSTMlr0.005_batchsize64_embeddim50_hidden256_layers2_dropout0.5_regularisation0.001_checkpoint22.pth"
     model = get_model(file_name)
     accuracy, precision, recall = evaluate(model, test_loader)
     print("File:", file_name)
