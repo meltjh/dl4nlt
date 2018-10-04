@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from os import listdir
 from os.path import isfile, join
 import re
+import pandas as pd
 
 import sys
 sys.path.append('../processing/')
@@ -48,6 +49,17 @@ def get_model(file_name):
 
     return model
 
+def get_doc_ids(doc_ids,indices):
+    docs = [doc_ids[ind].numpy().tolist() for ind in indices]
+    list_str = [str(doc[0][0]) + '_' + str(doc[0][1]) + '.txt' for doc in docs]
+    return list_str
+
+def create_error_tuple(doc_ids, fp_ind, fn_ind):
+    fp_doc = get_doc_ids(doc_ids, fp_ind)
+    fn_doc = get_doc_ids(doc_ids, fn_ind)
+
+    return fp_doc, fn_doc
+
 
 def evaluate(model, dataloader):
     """
@@ -59,11 +71,12 @@ def evaluate(model, dataloader):
     true_positives = 0
     false_positives = 0
     false_negatives = 0
+    error_vals_fp = []
+    error_vals_fn = [] 
 
     with torch.no_grad():
         for batch_i, data in enumerate(dataloader):
             x, y, doc_ids, doc_lengths = data
-
             x = torch.tensor(x).to(device)
             y = torch.tensor(y).long().to(device)
 
@@ -73,11 +86,17 @@ def evaluate(model, dataloader):
             accuracy = get_accuracy(outputs, y)
             sum_accuracy += accuracy.item()
 
-            tp, fp, fn = get_TP_FP_FN(outputs, y)
+            tp, fp, fn, fp_ind, fn_ind = get_TP_FP_FN(outputs, y)
+            fp_doc, fn_doc = create_error_tuple(doc_ids, fp_ind, fn_ind)
+            error_vals_fp.extend(fp_doc)
+            error_vals_fn.extend(fn_doc)
             true_positives += tp
             false_positives += fp
             false_negatives += fn
-
+    dict_val = {'false_postive':error_vals_fp, 'false_negative':error_vals_fn}
+    df = pd.DataFrame.from_dict(dict_val, orient='index')
+    #### CHANGE FILE NAME TO CSV ACCORDINGLY ####
+    df.to_csv('256error')
     precision, recall = get_precision_recall(true_positives, false_positives,
                                              false_negatives)
     return sum_accuracy/num_batches, precision, recall
@@ -102,13 +121,17 @@ def get_TP_FP_FN(predictions, targets):
     true = torch.ones(predictions.shape)
     false = torch.zeros(predictions.shape)
 
+    false_pos_ind = (torch.where((targets==0) & (predictions==1), true, false)).nonzero()
+    false_neg_ind = (torch.where((targets==1) & (predictions==0), true, false)).nonzero()
+
+
     true_positives = torch.sum(torch.where((targets==1) & (predictions==1),
                                            true, false)).item()
     false_positives = torch.sum(torch.where((targets==0) & (predictions==1),
                                             true, false)).item()
     false_negatives = torch.sum(torch.where((targets==1) & (predictions==0),
                                             true, false)).item()
-    return true_positives, false_positives, false_negatives
+    return true_positives, false_positives, false_negatives, false_pos_ind, false_neg_ind
 
 
 def get_precision_recall(true_positives, false_positives, false_negatives):
